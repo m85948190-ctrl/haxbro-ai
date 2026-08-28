@@ -1,65 +1,16 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#070a0d">
-  <title>HAxBRO — Your AI. Two Modes. One Robot.</title>
-  <link rel="stylesheet" href="/style.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#05070a"><title>HAxBRO — AI Security Assistant</title><link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div class="scanline"></div>
-  <header class="topbar">
-    <div class="brand"><span class="bot">◉</span><span>HAx<span class="accent">BRO</span></span></div>
-    <div class="tagline">Your AI. Two Modes. One Robot.</div>
-    <div class="status"><span class="dot"></span><span id="statusText">ONLINE</span></div>
-  </header>
-
-  <main class="app-shell">
-    <aside class="sidebar">
-      <div class="mode-card">
-        <div class="eyebrow">ACTIVE MODE</div>
-        <div class="mode-name" id="modeName">NORMAL</div>
-        <div class="mode-desc" id="modeDesc">Friendly, helpful, creative AI.</div>
-        <div class="mode-buttons">
-          <button class="mode-btn active" data-mode="normal">NORMAL</button>
-          <button class="mode-btn beast" data-mode="beast">BEAST</button>
-        </div>
-      </div>
-      <div class="commands">
-        <div class="eyebrow">COMMANDS</div>
-        <button data-command="/help">/help <span>commands</span></button>
-        <button data-command="/analyze">/analyze <span>code security</span></button>
-        <button data-command="/scan">/scan <span>security guidance</span></button>
-        <button data-command="/secure">/secure <span>hardening</span></button>
-        <button data-command="/cve">/cve <span>CVE info</span></button>
-        <button data-command="/review">/review <span>secure review</span></button>
-        <button data-command="/threatmodel">/threatmodel <span>threat model</span></button>
-        <button data-command="/incident">/incident <span>IR guidance</span></button>
-      </div>
-      <div class="robot-card">
-        <div class="eyebrow">ROBOT LINK</div>
-        <div class="robot-title">ESP32 READY</div>
-        <div class="robot-copy">Voice wake word: <b>“Hey HAxBRO”</b></div>
-        <code>/api/chat</code>
-      </div>
-    </aside>
-
-    <section class="chat-panel">
-      <div class="chat-head">
-        <div><span class="prompt">HAxBRO://</span> <span id="headMode">NORMAL</span></div>
-        <button id="clearBtn" class="ghost">CLEAR</button>
-      </div>
-      <div id="messages" class="messages">
-        <div class="message bot-msg"><div class="avatar">HB</div><div><div class="bubble"><b>HAxBRO initialized.</b><br>Two modes. One robot. Ask me anything, or use a command from the sidebar.</div><div class="meta">SYSTEM · NORMAL</div></div></div>
-      </div>
-      <form id="chatForm" class="composer">
-        <div class="input-wrap"><span class="prompt">›</span><textarea id="promptInput" rows="1" maxlength="12000" placeholder="Talk to HAxBRO…"></textarea></div>
-        <button class="send" type="submit">SEND <span>↵</span></button>
-      </form>
-      <div class="hint">Enter to send · Shift+Enter for newline · <span id="modeHint">Normal mode is conversational</span></div>
-    </section>
-  </main>
-  <script src="/script.js"></script>
-</body>
-</html>
+<div class="ambient"></div>
+<header class="topbar"><div class="brand"><span class="brandmark">HB</span><div><strong>HAx<span>BRO</span></strong><small>AI SECURITY ASSISTANT</small></div></div><div class="top-center">Your AI. Two Modes. One Robot.</div><div class="status"><i></i><span id="statusText">SYSTEM ONLINE</span></div></header>
+<main class="app-shell">
+<aside class="sidebar">
+<section class="mode-card"><div class="section-label">OPERATING MODE</div><div class="mode-row"><div><div id="modeName" class="mode-name">NORMAL</div><div id="modeDesc" class="mode-desc">Friendly, helpful, creative AI.</div></div><div class="mode-indicator"></div></div><div class="mode-buttons"><button class="mode-btn active" data-mode="normal">NORMAL</button><button class="mode-btn beast" data-mode="beast">BEAST</button></div></section>
+<section class="quick"><div class="section-label">QUICK ACTIONS</div><button data-command="/analyze"><b>/analyze</b><span>Code vulnerabilities</span></button><button data-command="/scan"><b>/scan</b><span>Security scan guidance</span></button><button data-command="/secure"><b>/secure</b><span>Hardening advice</span></button><button data-command="/review"><b>/review</b><span>Security review</span></button><button data-command="/threatmodel"><b>/threatmodel</b><span>Build threat model</span></button><button data-command="/incident"><b>/incident</b><span>Incident response</span></button></section>
+<section class="robot-card"><div class="section-label">ROBOT CONNECTIVITY</div><div class="robot-status"><i></i> ESP32 READY</div><p>Wake word</p><code>“Hey HAxBRO”</code><div class="api-chip">REST API · /api/chat</div></section>
+</aside>
+<section class="chat-panel"><div class="chat-head"><div><span class="terminal">HAxBRO://</span><span id="headMode">NORMAL</span></div><button id="clearBtn" class="ghost">NEW SESSION</button></div><div id="messages" class="messages"><div class="welcome"><div class="hero-icon">HB</div><div><div class="welcome-kicker">SYSTEM READY</div><h1>What are we building today?</h1><p>Ask HAxBRO anything. Switch to Beast Mode for focused defensive cybersecurity analysis.</p><div class="suggestions"><button data-command="Explain a security concept">Explain a security concept</button><button data-command="Review my code for security issues">Review my code</button><button data-command="Help me threat model an application">Threat model an app</button></div></div></div></div><form id="chatForm" class="composer"><div class="input-wrap"><span class="terminal">›</span><textarea id="promptInput" rows="1" maxlength="12000" placeholder="Message HAxBRO..."></textarea></div><button class="send" type="submit"><span>SEND</span><b>↵</b></button></form><div class="hint">ENTER to send · SHIFT + ENTER for newline · <span id="modeHint">Normal mode · conversational</span></div></section>
+</main><script src="/script.js"></script></body></html>
