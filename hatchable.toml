@@ -1,0 +1,10 @@
+[ai]
+required = true
+providers = ["openai"]
+description = "HAxBRO AI chat and cybersecurity assistant"
+
+[[secret]]
+name = "PORT"
+required = false
+expose = true
+description = "Optional application port override"
