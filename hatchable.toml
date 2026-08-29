@@ -1,7 +1,7 @@
 [ai]
 required = true
 providers = ["openai", "google"]
-description = "HAxBRO Kai free-first multi-provider failover: OpenAI, Google Gemini, Groq, Cerebras, Mistral, OpenRouter, and Hugging Face"
+description = "HAxBRO Kai free-first multi-provider failover: OpenAI, Google Gemini, Groq, Mistral, OpenRouter, and Hugging Face"
 
 [[secret]]
 name = "OPENAI_API_KEY"
@@ -20,12 +20,6 @@ name = "GROQ_API_KEY"
 required = false
 expose = true
 description = "Optional Groq API key for Kai fallback"
-
-[[secret]]
-name = "CEREBRAS_API_KEY"
-required = false
-expose = true
-description = "Optional Cerebras API key for Kai fallback"
 
 [[secret]]
 name = "MISTRAL_API_KEY"

@@ -21,7 +21,7 @@ export default async function(req,res){
   const memory=history?`\n\nRECENT CONVERSATION CONTEXT (from this browser's saved chats):\n${history}\n\nUse this context to maintain continuity. Do not claim to remember anything not present here.`:'';
   const system=(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:NORMAL_SYSTEM)+'\n\n'+CREATOR_RULE+identity+memory;
   try{
-    const result=await complete({system,prompt,maxTokens:1800,order:['openai','google','groq','cerebras','mistral','openrouter','huggingface']});
+    const result=await complete({system,prompt,maxTokens:1800,order:['openai','google','groq','mistral','openrouter','huggingface']});
     return res.json({response:result.text,mode:requestedMode,provider:result.provider,model:result.model,responseMs:result.elapsedMs,failoverAttempts:result.attempts});
   }catch(err){
     console.error('HAxBRO AI error',err);
