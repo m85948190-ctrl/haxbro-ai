@@ -14,3 +14,15 @@ name = "PORT"
 required = false
 expose = true
 description = "Optional application port override"
+
+[[secret]]
+name = "GROQ_API_KEY"
+required = false
+expose = true
+description = "Optional Groq API key for tertiary AI fallback"
+
+[[secret]]
+name = "CEREBRAS_API_KEY"
+required = false
+expose = true
+description = "Optional Cerebras API key for additional AI fallback"
