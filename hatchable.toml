@@ -4,6 +4,12 @@ providers = ["openai", "google", "anthropic"]
 description = "HAxBRO AI chat and cybersecurity assistant with OpenAI primary, Google secondary, and Anthropic tertiary provider"
 
 [[secret]]
+name = "OPENAI_API_KEY"
+required = false
+expose = true
+description = "OpenAI API key for HAxBRO primary AI provider"
+
+[[secret]]
 name = "GOOGLE_API_KEY"
 required = false
 expose = true
