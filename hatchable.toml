@@ -1,7 +1,7 @@
 [ai]
 required = true
-providers = ["openai", "google"]
-description = "HAxBRO AI chat and cybersecurity assistant"
+providers = ["openai", "google", "anthropic"]
+description = "HAxBRO AI chat and cybersecurity assistant with OpenAI primary, Google secondary, and Anthropic tertiary provider"
 
 [[secret]]
 name = "GOOGLE_API_KEY"
@@ -25,4 +25,10 @@ description = "Optional Groq API key for tertiary AI fallback"
 name = "CEREBRAS_API_KEY"
 required = false
 expose = true
-description = "Optional Cerebras API key for additional AI fallback"
+description = "Optional Cerebras API key for fourth AI fallback"
+
+[[secret]]
+name = "ANTHROPIC_API_KEY"
+required = false
+expose = true
+description = "Optional Anthropic API key for tertiary AI fallback"
