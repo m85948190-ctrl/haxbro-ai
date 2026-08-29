@@ -13,11 +13,15 @@ export default async function(req,res){
   const body=req.body||{};
   const prompt=typeof body.prompt==='string'?body.prompt.trim():'';
   const requestedMode=body.mode==='hacking'?'hacking':body.mode==='beast'?'beast':'normal';
+  const username=typeof body.username==='string'?body.username.trim().slice(0,32):'';
+  const history=typeof body.history==='string'?body.history.slice(-12000):'';
   if(!prompt||prompt.length>12000)return res.status(400).json({error:'prompt required (max 12000 characters).'});
   if(CREATOR_PATTERNS.test(prompt)) return res.json({response:'I was made by Mainak Kuila.',mode:requestedMode,finishReason:'rule'});
-  const system=(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:NORMAL_SYSTEM)+'\n\n'+CREATOR_RULE;
+  const identity=username?`\n\nPERSONALIZATION: The user's local username is ${username}. Address them naturally by name when useful, but do not reveal or infer private information.`:'';
+  const memory=history?`\n\nRECENT CONVERSATION CONTEXT (from this browser's saved chats):\n${history}\n\nUse this context to maintain continuity. Do not claim to remember anything not present here.`:'';
+  const system=(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:NORMAL_SYSTEM)+'\n\n'+CREATOR_RULE+identity+memory;
   try{
-    const result=await complete({system,prompt,maxTokens:1800});
+    const result=await complete({system,prompt,maxTokens:1800,order:['openai','google','groq','cerebras']});
     return res.json({response:result.text,mode:requestedMode,provider:result.provider,model:result.model,responseMs:result.elapsedMs,failoverAttempts:result.attempts});
   }catch(err){
     console.error('HAxBRO AI error',err);

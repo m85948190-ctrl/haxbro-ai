@@ -1,7 +1,7 @@
 [ai]
 required = true
-providers = ["openai", "google", "anthropic"]
-description = "HAxBRO AI chat and cybersecurity assistant with OpenAI primary, Google secondary, and Anthropic tertiary provider"
+providers = ["openai", "google"]
+description = "HAxBRO AI chat with Kai failover: OpenAI primary, Google secondary, Groq tertiary, Cerebras fourth"
 
 [[secret]]
 name = "OPENAI_API_KEY"
