@@ -1,7 +1,7 @@
 [ai]
 required = true
 providers = ["openai", "google"]
-description = "HAxBRO AI chat with Kai failover: OpenAI primary, Google secondary, Groq tertiary, Cerebras fourth"
+description = "HAxBRO Kai multi-provider failover: OpenAI, Google Gemini, Groq, Cerebras, Mistral, OpenRouter, and Cloudflare Workers AI"
 
 [[secret]]
 name = "OPENAI_API_KEY"
@@ -37,4 +37,28 @@ description = "Optional Cerebras API key for fourth AI fallback"
 name = "ANTHROPIC_API_KEY"
 required = false
 expose = true
-description = "Optional Anthropic API key for tertiary AI fallback"
+description = "Optional Anthropic API key; disabled in Kai's free-first routing"
+
+[[secret]]
+name = "MISTRAL_API_KEY"
+required = false
+expose = true
+description = "Optional Mistral API key for Kai fallback"
+
+[[secret]]
+name = "OPENROUTER_API_KEY"
+required = false
+expose = true
+description = "Optional OpenRouter API key for free-model fallback routing"
+
+[[secret]]
+name = "CLOUDFLARE_API_TOKEN"
+required = false
+expose = true
+description = "Optional Cloudflare API token for Workers AI fallback"
+
+[[secret]]
+name = "CLOUDFLARE_ACCOUNT_ID"
+required = false
+expose = true
+description = "Optional Cloudflare account ID for Workers AI fallback"
