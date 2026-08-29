@@ -1,7 +1,13 @@
 [ai]
 required = true
-providers = ["openai"]
+providers = ["openai", "google"]
 description = "HAxBRO AI chat and cybersecurity assistant"
+
+[[secret]]
+name = "GOOGLE_API_KEY"
+required = false
+expose = true
+description = "Google Gemini API key for HAxBRO secondary AI provider"
 
 [[secret]]
 name = "PORT"
