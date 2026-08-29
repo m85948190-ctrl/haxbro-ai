@@ -1,4 +1,4 @@
-import { ai } from 'hatchable';
+import { complete } from 'lib/kai';
 
 export const access = 'public';
 export const methods = ['POST'];
@@ -17,9 +17,8 @@ export default async function(req,res){
   if(CREATOR_PATTERNS.test(prompt)) return res.json({response:'I was made by Mainak Kuila.',mode:requestedMode,finishReason:'rule'});
   const system=(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:NORMAL_SYSTEM)+'\n\n'+CREATOR_RULE;
   try{
-    const result=await ai.generateText({model:'gpt-mini',purpose:'haxbro-chat',system,prompt,maxTokens:1800,signal:AbortSignal.timeout(60000)});
-    if(result.finishReason==='length')return res.status(502).json({error:'Response was truncated. Please ask a shorter question.'});
-    return res.json({response:result.text,mode:requestedMode,finishReason:result.finishReason});
+    const result=await complete({system,prompt,maxTokens:1800});
+    return res.json({response:result.text,mode:requestedMode,provider:result.provider,model:result.model,responseMs:result.elapsedMs,failoverAttempts:result.attempts});
   }catch(err){
     console.error('HAxBRO AI error',err);
     return res.status(502).json({error:'AI service unavailable. Check the project AI setup and try again.'});
