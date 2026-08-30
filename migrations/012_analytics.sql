@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS haxbro_chat_analytics (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), created_at timestamptz NOT NULL DEFAULT now(), mode text NOT NULL DEFAULT 'normal', knowledge_source text NOT NULL DEFAULT 'none', provider text, model text, response_ms integer, success boolean NOT NULL DEFAULT true)
