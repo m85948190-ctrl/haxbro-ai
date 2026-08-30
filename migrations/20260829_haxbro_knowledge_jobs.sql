@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS haxbro_knowledge_jobs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), target text NOT NULL, category text NOT NULL DEFAULT 'general', status text NOT NULL DEFAULT 'queued', priority integer NOT NULL DEFAULT 0, source_url text, result jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now(), completed_at timestamptz);
