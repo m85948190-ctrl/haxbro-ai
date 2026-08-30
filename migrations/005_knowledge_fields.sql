@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS haxbro_knowledge_fields (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), field_key text UNIQUE NOT NULL, domain text NOT NULL, description text NOT NULL, priority integer NOT NULL DEFAULT 50, status text NOT NULL DEFAULT 'planned', created_at timestamptz NOT NULL DEFAULT now())
