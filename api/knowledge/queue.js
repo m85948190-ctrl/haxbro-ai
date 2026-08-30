@@ -18,11 +18,9 @@ export default async function(req,res){
   const title=clean(body.title,300) || url;
   const category=clean(body.category,120) || "general";
   const priority=Math.max(0,Math.min(3,Number(body.priority||2)));
-  const metadata=(body.metadata && typeof body.metadata === "object") ? body.metadata : {};
-
   try{
     const headers={"content-type":"application/json",apikey:SUPABASE_KEY,authorization:`Bearer ${SUPABASE_KEY}`,Prefer:"resolution=merge-duplicates,return=representation"};
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/haxbro_research_jobs?on_conflict=target`,{method:"POST",headers,body:JSON.stringify({target:url,category,priority,status:"queued",metadata:{...metadata,title,ingestion_source:"external-agent"}})});
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/haxbro_research_jobs?on_conflict=target`,{method:"POST",headers,body:JSON.stringify({target:url,category,priority,status:"queued"})});
     const data=await r.json();
     if(!r.ok) return res.status(r.status).json({error:"Supabase queue write failed",detail:data});
     return res.status(201).json({ok:true,warehouse:"supabase",queued:true,target:url,result:data});
