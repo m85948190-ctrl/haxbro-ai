@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS haxbro_knowledge_sources CASCADE;
