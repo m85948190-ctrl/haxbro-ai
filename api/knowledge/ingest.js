@@ -92,7 +92,7 @@ export default async function(req,res){
       if(!pagePatch.ok){const d=await pagePatch.json().catch(()=>null);return res.status(pagePatch.status).json({error:"Supabase page update failed",detail:d});}
     }
 
-    const oldChunksResp=await fetch(`${SUPABASE_URL}/rest/v1/haxbro_chunks?select=id&exact=true&page_id=eq.${page.id}`,{headers});
+    const oldChunksResp=await fetch(`${SUPABASE_URL}/rest/v1/haxbro_chunks?select=id&page_id=eq.${page.id}`,{headers});
     const oldChunks=await oldChunksResp.json();
     if(!oldChunksResp.ok) return res.status(oldChunksResp.status).json({error:"Supabase chunk lookup failed",detail:oldChunks});
     if(Array.isArray(oldChunks)&&oldChunks.length){
