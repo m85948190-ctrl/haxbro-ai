@@ -50,3 +50,15 @@ name = "VERCEL_TOKEN_2"
 required = false
 expose = true
 description = "Vercel token 2 used server-side by HAxBRO to publish generated apps"
+
+[[secret]]
+name = "SUPABASE_SERVICE_ROLE_KEY"
+required = false
+expose = true
+description = "Supabase service-role key used only server-side for the HAxBRO knowledge bridge"
+
+[[secret]]
+name = "SUPABASE_URL"
+required = false
+expose = true
+description = "Supabase project URL for the HAxBRO knowledge warehouse"

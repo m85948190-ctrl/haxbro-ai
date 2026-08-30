@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS haxbro_knowledge_bridge_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), action text NOT NULL, target text, ok boolean NOT NULL DEFAULT false, detail jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now())
