@@ -1,4 +1,5 @@
 import { complete } from 'lib/kai';
+import { db } from 'hatchable';
 
 export const access = 'public';
 export const methods = ['POST'];
@@ -22,9 +23,18 @@ export default async function(req,res){
   if(CREATOR_PATTERNS.test(prompt)) return res.json({response:'I was made by Mainak Kuila.',mode:requestedMode,finishReason:'rule'});
   const identity=username?`\n\nPERSONALIZATION: The user's local username is ${username}. Address them naturally by name when useful, but do not reveal or infer private information.`:'';
   const memory=history?`\n\nRECENT CONVERSATION CONTEXT (from this browser's saved chats):\n${history}\n\nUse this context to maintain continuity. Do not claim to remember anything not present here.`:'';
-  const system=(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:requestedMode==='code'?CODE_SYSTEM:NORMAL_SYSTEM)+'\n\n'+CREATOR_RULE+identity+memory;
+  let knowledgeContext='';
   try{
-    const result=await complete({system,prompt,maxTokens:1800,order:['openai','google','groq','mistral','openrouter','huggingface']});
+    const terms=prompt.toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.length>3).slice(0,8);
+    if(terms.length){
+      const pattern='%'+terms.join('%')+'%';
+      const k=await db.query('SELECT s.url,s.title,c.content FROM haxbro_knowledge_chunks c JOIN haxbro_knowledge_sources s ON s.id=c.source_id WHERE lower(c.content) LIKE $1 ORDER BY s.fetched_at DESC LIMIT 5',[pattern]);
+      if(k.rows.length) knowledgeContext='\\n\\nHAxBRO PRIVATE KNOWLEDGE (use when relevant; do not mention internal retrieval):\\n'+k.rows.map((r,i)=>`[${i+1}] ${r.title||r.url}\\n${r.content.slice(0,3500)}\\nSOURCE: ${r.url}`).join('\\n\\n');
+    }
+  }catch(e){ console.warn('Knowledge retrieval unavailable',e?.message||e); }
+  const system=(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:requestedMode==='code'?CODE_SYSTEM:NORMAL_SYSTEM)+'\\n\\n'+CREATOR_RULE+identity+memory+knowledgeContext;
+  try{
+    const result=await complete({system,prompt,maxTokens:1800,order:['groq','mistral','openrouter','huggingface','google','openai']});
     return res.json({response:result.text,mode:requestedMode,provider:result.provider,model:result.model,responseMs:result.elapsedMs,failoverAttempts:result.attempts});
   }catch(err){
     console.error('HAxBRO AI error',err);
