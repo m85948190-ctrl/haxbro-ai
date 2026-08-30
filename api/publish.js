@@ -16,12 +16,12 @@ export default async function(req,res){
     return {file:path,data:data};
   }).filter(function(f){return !!f.file;});
   if(!files.length){return res.status(400).json({error:'No valid generated files were provided.'});}
-  var payload={name:name,files:files};
+  var payload={name:name,files:files,projectSettings:{framework:null,outputDirectory:null,installCommand:null,buildCommand:null,devCommand:null,rootDirectory:null}};
   try{
     var tokens=[token1,token2].filter(Boolean);
     var lastStatus=503,lastData=null;
     for(var i=0;i<tokens.length;i++){
-      var r=await fetch('https://api.vercel.com/v13/deployments',{method:'POST',headers:{'Authorization':'Bearer '+tokens[i],'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      var r=await fetch('https://api.vercel.com/v13/deployments?skipAutoDetectionConfirmation=1',{method:'POST',headers:{'Authorization':'Bearer '+tokens[i],'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var d=await r.json();
       if(r.ok)return res.json({success:true,url:d.url||null,inspectUrl:d.inspectorUrl||null,state:d.readyState||'BUILDING',tokenSlot:i+1});
       lastStatus=r.status; lastData=d;
