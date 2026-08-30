@@ -26,12 +26,18 @@ export default async function(req,res){
   let knowledgeContext='';
   try{
     const terms=prompt.toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.length>3).slice(0,8);
-    if(terms.length){
-      const pattern='%'+terms.join('%')+'%';
-      const k=await db.query('SELECT s.url,s.title,c.content FROM haxbro_knowledge_chunks c JOIN haxbro_knowledge_sources s ON s.id=c.source_id WHERE lower(c.content) LIKE $1 ORDER BY s.fetched_at DESC LIMIT 5',[pattern]);
-      if(k.rows.length) knowledgeContext='\\n\\nHAxBRO PRIVATE KNOWLEDGE (use when relevant; do not mention internal retrieval):\\n'+k.rows.map((r,i)=>`[${i+1}] ${r.title||r.url}\\n${r.content.slice(0,3500)}\\nSOURCE: ${r.url}`).join('\\n\\n');
+    const supabaseUrl=process.env.SUPABASE_URL || 'https://xorgweiijpupsxugteuh.supabase.co';
+    const supabaseKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if(terms.length && supabaseKey){
+      const phrase=encodeURIComponent('*'+terms.join('*')+'*');
+      const url=`${supabaseUrl}/rest/v1/haxbro_knowledge_chunks?select=chunk_index,content,source_id,haxbro_knowledge_sources(url,title,fetched_at)&or=(content.ilike.${phrase},haxbro_knowledge_sources.title.ilike.${phrase})&limit=8`;
+      const r=await fetch(url,{headers:{apikey:supabaseKey,authorization:`Bearer ${supabaseKey}`}});
+      const data=await r.json();
+      if(r.ok && Array.isArray(data) && data.length){
+        knowledgeContext='\\n\\nHAxBRO SUPABASE KNOWLEDGE (use when relevant; do not mention internal retrieval):\\n'+data.map((x,i)=>`[${i+1}] ${x.haxbro_knowledge_sources?.title||x.haxbro_knowledge_sources?.url||'Source'}\\n${String(x.content||'').slice(0,3500)}\\nSOURCE: ${x.haxbro_knowledge_sources?.url||''}`).join('\\n\\n');
+      }
     }
-  }catch(e){ console.warn('Knowledge retrieval unavailable',e?.message||e); }
+  }catch(e){ console.warn('Supabase knowledge retrieval unavailable',e?.message||e); }
   const system=(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:requestedMode==='code'?CODE_SYSTEM:NORMAL_SYSTEM)+'\\n\\n'+CREATOR_RULE+identity+memory+knowledgeContext;
   try{
     const result=await complete({system,prompt,maxTokens:1800,order:['groq','mistral','openrouter','huggingface','google','openai']});
