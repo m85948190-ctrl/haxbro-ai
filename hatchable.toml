@@ -38,3 +38,9 @@ name = "HF_TOKEN"
 required = false
 expose = true
 description = "Optional Hugging Face token for Kai model fallback"
+
+[[secret]]
+name = "VERCEL_TOKEN"
+required = false
+expose = true
+description = "Vercel token used server-side by HAxBRO to publish generated apps"
