@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS haxbro_knowledge_sources (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), url text UNIQUE NOT NULL, title text, source_type text NOT NULL DEFAULT 'web', status text NOT NULL DEFAULT 'queued', created_at timestamptz NOT NULL DEFAULT now(), fetched_at timestamptz)

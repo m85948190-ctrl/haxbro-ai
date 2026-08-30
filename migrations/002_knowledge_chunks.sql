@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS haxbro_knowledge_chunks (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), source_id uuid NOT NULL REFERENCES haxbro_knowledge_sources(id) ON DELETE CASCADE, chunk_index integer NOT NULL, content text NOT NULL, content_hash text, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(source_id, chunk_index))

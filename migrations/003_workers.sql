@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS haxbro_knowledge_workers (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), worker_key text UNIQUE NOT NULL, status text NOT NULL DEFAULT 'virtual', jobs_completed integer NOT NULL DEFAULT 0, last_heartbeat timestamptz, created_at timestamptz NOT NULL DEFAULT now())
