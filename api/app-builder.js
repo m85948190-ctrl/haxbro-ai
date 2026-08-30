@@ -34,6 +34,11 @@ function fallback(prompt,ctx){
 export default async function(req,res){
  const prompt=safe(req.body?.prompt); if(!prompt)return res.status(400).json({error:'Tell HAxBRO what app to build.'});
  let ctx=null; if(weatherLike(prompt)){const m=prompt.match(/(?:in|for|at)\s+([A-Za-z .'-]{2,40})/i);ctx=await weatherContext(m?.[1]||'Kolkata');}
+ if(weatherLike(prompt)||calculatorLike(prompt)){
+   const built=fallback(prompt,ctx);
+   built.kai={version:'2.0',understood:weatherLike(prompt)?'Weather app':'Calculator app',researched:weatherLike(prompt)?'Open-Meteo current + 7-day weather structure':'Standard calculator UX',researchContext:ctx};
+   return res.json(built);
+ }
  try{
   const result=await ai.generateText({model:'gpt-mini',purpose:'haxbro-app-builder',maxTokens:7000,system:`You are Kai 2.0, the HAxBRO App Builder architect. Understand what the user means, not just the words. Infer the conventional UX of the requested app. For current-data apps, use the supplied research context. Return ONLY valid JSON with keys name, summary, files. files is an array of {path,content}. Generate a complete small client-side web app using only HTML/CSS/JS. Never claim deployment. Do not include markdown fences.`,prompt:`USER REQUEST:\n${prompt}\n\nRESEARCH CONTEXT:\n${JSON.stringify(ctx||{})}`});
   let parsed; try{parsed=JSON.parse(result.text)}catch{parsed=null}
