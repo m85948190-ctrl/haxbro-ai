@@ -62,3 +62,9 @@ name = "SUPABASE_URL"
 required = false
 expose = true
 description = "Supabase project URL for the HAxBRO knowledge warehouse"
+
+[[secret]]
+name = "HAXBRO_INGEST_KEY"
+required = true
+expose = true
+description = "Dedicated HAxBRO ingestion key for external research agents; never share the Supabase service-role key"
