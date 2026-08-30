@@ -19,8 +19,14 @@ export default async function(req,res){
   const category=clean(body.category,120) || "general";
   const priority=Math.max(0,Math.min(3,Number(body.priority||2)));
   try{
-    const headers={"content-type":"application/json",apikey:SUPABASE_KEY,authorization:`Bearer ${SUPABASE_KEY}`,Prefer:"resolution=merge-duplicates,return=representation"};
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/haxbro_research_jobs?on_conflict=target`,{method:"POST",headers,body:JSON.stringify({target:url,category,priority,status:"queued"})});
+    const headers={"content-type":"application/json",apikey:SUPABASE_KEY,authorization:`Bearer ${SUPABASE_KEY}`};
+    const existsResp=await fetch(`${SUPABASE_URL}/rest/v1/haxbro_research_jobs?select=id,status,target&target=eq.${encodeURIComponent(url)}&limit=1`,{headers});
+    const existsData=await existsResp.json();
+    if(!existsResp.ok) return res.status(existsResp.status).json({error:"Supabase queue lookup failed",detail:existsData});
+    if(Array.isArray(existsData)&&existsData.length){
+      return res.status(200).json({ok:true,warehouse:"supabase",queued:false,deduplicated:true,target:url,existing:existsData[0]});
+    }
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/haxbro_research_jobs`,{method:"POST",headers:{...headers,Prefer:"return=representation"},body:JSON.stringify({target:url,category,priority,status:"queued"})});
     const data=await r.json();
     if(!r.ok) return res.status(r.status).json({error:"Supabase queue write failed",detail:data});
     return res.status(201).json({ok:true,warehouse:"supabase",queued:true,target:url,result:data});
