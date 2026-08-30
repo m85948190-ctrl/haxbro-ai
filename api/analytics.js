@@ -10,11 +10,9 @@ export default async function(req,res){
       ]);
       return res.json({ok:true});
     }
-    const [totals,sources,providers]=await Promise.all([
-      db.query('SELECT count(*)::int AS total,count(*) FILTER (WHERE success=true)::int AS successful,count(*) FILTER (WHERE knowledge_source <> $1)::int AS researched FROM haxbro_chat_analytics',['none']),
-      db.query('SELECT knowledge_source,count(*)::int AS count FROM haxbro_chat_analytics GROUP BY knowledge_source ORDER BY count DESC'),
-      db.query('SELECT coalesce(provider,$1) AS provider,count(*)::int AS count,round(avg(response_ms))::int AS avg_ms FROM haxbro_chat_analytics GROUP BY coalesce(provider,$1) ORDER BY count DESC',['unknown'])
-    ]);
+    const totals=await db.query('SELECT count(*)::int AS total,count(*) FILTER (WHERE success=true)::int AS successful FROM haxbro_chat_analytics');
+    const sources=await db.query('SELECT knowledge_source,count(*)::int AS count FROM haxbro_chat_analytics GROUP BY knowledge_source ORDER BY count DESC');
+    const providers=await db.query("SELECT coalesce(provider,'unknown') AS provider,count(*)::int AS count,round(avg(response_ms))::int AS avg_ms FROM haxbro_chat_analytics GROUP BY coalesce(provider,'unknown') ORDER BY count DESC");
     const t=totals.rows[0]||{total:0,successful:0,researched:0};
     const total=Number(t.total||0);
     const own=Number(sources.rows.find(x=>x.knowledge_source==='supabase')?.count||0);
