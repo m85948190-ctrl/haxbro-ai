@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS haxbro_agent_jobs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), worker_no integer NOT NULL, task_type text NOT NULL, target text, status text NOT NULL DEFAULT 'queued', result_summary text, attempts integer NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now(), completed_at timestamptz)
