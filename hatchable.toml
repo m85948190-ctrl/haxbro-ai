@@ -40,7 +40,13 @@ expose = true
 description = "Optional Hugging Face token for Kai model fallback"
 
 [[secret]]
-name = "VERCEL_TOKEN"
+name = "VERCEL_TOKEN_1"
 required = false
 expose = true
-description = "Vercel token used server-side by HAxBRO to publish generated apps"
+description = "Vercel token 1 used server-side by HAxBRO to publish generated apps"
+
+[[secret]]
+name = "VERCEL_TOKEN_2"
+required = false
+expose = true
+description = "Vercel token 2 used server-side by HAxBRO to publish generated apps"
