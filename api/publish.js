@@ -7,9 +7,15 @@ export default async function(req,res){
   var token=token1||token2;
   if(!token){return res.status(503).json({error:'Vercel publishing is not configured yet. Add VERCEL_TOKEN_1 or VERCEL_TOKEN_2 in HAxBRO project secrets.'});}
   var body=req.body||{};
-  var files=body.files||[];
-  if(!Array.isArray(files)||!files.length){return res.status(400).json({error:'Build an app before publishing it.'});}
+  var rawFiles=body.files||[];
+  if(!Array.isArray(rawFiles)||!rawFiles.length){return res.status(400).json({error:'Build an app before publishing it.'});}
   var name=String(body.name||'haxbro-app').toLowerCase().replace(/[^a-z0-9-]+/g,'-').slice(0,60);
+  var files=rawFiles.map(function(f){
+    var path=String(f.path||f.file||'').replace(/^\/+/, '');
+    var data=typeof f.content==='string' ? f.content : (f.data==null?'':String(f.data));
+    return {file:path,data:data};
+  }).filter(function(f){return !!f.file;});
+  if(!files.length){return res.status(400).json({error:'No valid generated files were provided.'});}
   var payload={name:name,files:files};
   try{
     var tokens=[token1,token2].filter(Boolean);
