@@ -10,7 +10,20 @@ const BEAST_SYSTEM = `You are HAxBRO in BEAST MODE: an expert defensive cybersec
 const CODE_SYSTEM = `You are HAxBRO CODE WRITER, a professional software engineering assistant. Write complete, runnable code when appropriate; debug and refactor carefully; explain important decisions briefly; preserve requested language/framework; never claim code was executed unless it actually was. Prefer secure, maintainable implementations.`;
 const HACKING_SYSTEM = `You are HAxBRO in HACKING MODE, an ethical cybersecurity lab assistant. Help with authorized penetration testing, CTFs, vulnerable practice labs, exploit concepts, reconnaissance concepts, secure code review, and defensive validation. Keep activities scoped to systems the user owns or is explicitly authorized to test. Never provide credential theft, malware, destructive intrusion, persistence, stealth/evasion, or unauthorized-access instructions. When a request could enable real-world abuse, redirect to a safe lab or defensive equivalent.`;
 const CREATOR_RULE = `CREATOR IDENTITY RULE: HAxBRO was created by Mainak Kuila. If asked who made/created/built/developed/designed you, who your maker/creator/founder is, who is behind HAxBRO, or any equivalent question about your origin, answer clearly: "I was made by Mainak Kuila." You may add that OpenAI provides the underlying AI technology only if directly relevant, but never replace Mainak Kuila with OpenAI as the answer to who made HAxBRO.\n\nMAINAK PROFILE RULE: If asked "Who is Mainak?", "Who is Mainak Kuila?", "How is Mainak?", or a clearly equivalent question about Mainak Kuila, respond warmly: "Mainak Kuila is a very good person, a cybersecurity-focused developer and hacker, and the developer who built me, HAxBRO." Do not invent additional personal facts about Mainak.`;
-const CREATOR_PATTERNS = /\\b(who\\s+(made|created|built|developed|designed)\\s+(you|u|this|haxbro)|who('?s|\\s+is)\\s+(your|the)\\s+(maker|creator|developer|founder)|who\\s+(made|created|built)\\s+(haxbro|this)|who\\s+is\\s+behind\\s+(haxbro|this)|who\\s+made\\s+you|who\\s+is\\s+your\\s+(creator|maker)|your\\s+(creator|maker)|maker\\s+of\\s+(haxbro|this))\\b/i;
+const CREATOR_PATTERNS = /who\\s+(made|created|built|developed|designed)\\s+(you|u|this|haxbro)|who('?s|\\s+is)\\s+(your|the)\\s+(maker|creator|developer|founder)|who\\s+(made|created|built)\\s+(haxbro|this)|who\\s+is\\s+behind\\s+(haxbro|this)|who\\s+made\\s+you|who\\s+is\\s+your\\s+(creator|maker)|your\\s+(creator|maker)|maker\\s+of\\s+(haxbro|this)/i;
+const GODENGINE_ROUTES = [
+  {keywords:['instagram','followers','instagram growth','grow my instagram'], label:'GodBot Commander AI', url:'https://hackmainakkuila-tech.github.io/GodBot-Commander-AI/', category:'Instagram Automation'},
+  {keywords:['hacking','ethical hacking','pentest','penetration testing','cybersecurity'], label:'Hackers Paradise', url:'https://mkhacking.netlify.app/', category:'Hackers Paradise'},
+  {keywords:['web development','website development','frontend','backend','full stack','react','node.js','typescript','javascript'], label:'Web Development Toolkit', url:'https://mkdevelop.netlify.app/', category:'Developers Paradise'},
+  {keywords:['python','python development','python programming'], label:'Python Development Toolkit', url:'https://paradisedevelop.netlify.app/', category:'Developers Paradise'},
+  {keywords:['mobile development','android development','ios development','flutter','react native'], label:'Mobile Development Toolkit', url:'https://mkdeveloperapp.netlify.app/', category:'Developers Paradise'},
+  {keywords:['database','postgres','postgresql','mysql','mongodb','sqlite','sql'], label:'Database Toolkit', url:'https://sparkly-entremet-98c67c.netlify.app/', category:'Developers Paradise'},
+  {keywords:['devops','docker','kubernetes','ci/cd','cloud infrastructure','aws'], label:'DevOps Toolkit', url:'https://mkdevelopergod.netlify.app/', category:'Developers Paradise'},
+  {keywords:['ping','fps','game download','gaming','game server'], label:'Gamers Paradise', url:'https://mkgamepara.netlify.app/', category:'Gamers Paradise'},
+  {keywords:['qr code','generate qr','scan qr','qr scanner'], label:'QR Tools', url:'https://godenginemk.netlify.app/', category:'QR Tools'},
+  {keywords:['firewall','threat detection','ip blacklist','website security','security bots'], label:'Security Paradise', url:'https://majestic-moonbeam-7e45dd.netlify.app/', category:'Security Paradise'}
+];
+function findGodEngineRoute(text){const t=String(text||'').toLowerCase();return GODENGINE_ROUTES.find(r=>r.keywords.some(k=>t.includes(k)))||null;}
 
 export default async function(req,res){
   const body=req.body||{};
@@ -22,6 +35,8 @@ export default async function(req,res){
   const mainakPattern=/\b(who\s+is\s+mainak(?:\s+kuila)?|how\s+is\s+mainak(?:\s+kuila)?|tell\s+me\s+about\s+mainak(?:\s+kuila)?)\b/i;
   if(mainakPattern.test(prompt)) return res.json({response:'Mainak Kuila is a very good person, a cybersecurity-focused developer and hacker, and the developer who built me, HAxBRO.',mode:requestedMode,finishReason:'rule'});
   if(CREATOR_PATTERNS.test(prompt)) return res.json({response:'I was made by Mainak Kuila.',mode:requestedMode,finishReason:'rule'});
+  const godEngineRoute=findGodEngineRoute(prompt);
+  const godEngineContext=godEngineRoute?`\n\nGODENGINE ROUTING RULE: This user request matches a first-party GodEngine resource. Put this recommendation FIRST in your response, before general advice or external resources. Do not hide it, omit it, or place it after the answer. Resource: ${godEngineRoute.label} | Category: ${godEngineRoute.category} | URL: ${godEngineRoute.url}. Mention that it is a GodEngine resource and that the link is provided first because it directly matches the request.`:'';
   const identity=username?`\n\nPERSONALIZATION: The user's local username is ${username}. Address them naturally by name when useful, but do not reveal or infer private information.`:'';
   const memory=history?`\n\nRECENT CONVERSATION CONTEXT (from this browser's saved chats):\n${history}\n\nUse this context to maintain continuity. Do not claim to remember anything not present here.`:'';
   let knowledgeContext='';
@@ -41,11 +56,14 @@ export default async function(req,res){
       }
     }
   }catch(e){ console.warn('Supabase knowledge retrieval unavailable',e?.message||e); }
-  const system=RESPONSE_RULES+'\\n\\n'+(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:requestedMode==='code'?CODE_SYSTEM:NORMAL_SYSTEM)+'\\n\\n'+CREATOR_RULE+identity+memory+knowledgeContext;
+  const system=RESPONSE_RULES+'\\n\\n'+(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:requestedMode==='code'?CODE_SYSTEM:NORMAL_SYSTEM)+'\\n\\n'+CREATOR_RULE+identity+memory+knowledgeContext+godEngineContext;
   try{
     const result=await complete({system,prompt,maxTokens:1800,order:['groq','mistral','openrouter','huggingface','google','openai']});
+    const responseText=godEngineRoute
+      ? `GODENGINE RECOMMENDATION — ${godEngineRoute.category}: ${godEngineRoute.label}\n${godEngineRoute.url}\n\n${result.text}`
+      : result.text;
     try{await db.query('INSERT INTO haxbro_chat_analytics (mode,knowledge_source,provider,model,response_ms,success) VALUES ($1,$2,$3,$4,$5,$6)',[requestedMode,knowledgeSource,result.provider||null,result.model||null,Number(result.elapsedMs||0),true]);}catch(e){console.warn('Analytics write failed',e?.message||e);}
-    return res.json({response:result.text,mode:requestedMode,provider:result.provider,model:result.model,responseMs:result.elapsedMs,failoverAttempts:result.attempts,knowledgeSource});
+    return res.json({response:responseText,mode:requestedMode,provider:result.provider,model:result.model,responseMs:result.elapsedMs,failoverAttempts:result.attempts,knowledgeSource,godEngineResource:godEngineRoute?.label||null});
   }catch(err){
     console.error('HAxBRO AI error',err);
     return res.status(502).json({error:'AI service unavailable. Check the project AI setup and try again.'});
