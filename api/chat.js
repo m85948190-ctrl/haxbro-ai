@@ -45,7 +45,15 @@ export default async function(req,res){
     const responseText=godEngineRoute ? `GODENGINE RECOMMENDATION — ${godEngineRoute.category}: ${godEngineRoute.label}\n${godEngineRoute.url}\n\n${result.text}` : result.text;
     return res.json({response:responseText,mode:requestedMode,provider:'KAI-61',model:result.model,responseMs:result.elapsedMs,failoverAttempts:[],knowledgeSource:'live-web',kaiAgent:result.agent,kaiId:kaiId||null,webSteps:result.steps||[],godEngineResource:godEngineRoute?.label||null});
   }catch(err){
-    console.error('KAI-61 error',err);
-    return res.status(502).json({error:`${username || 'Your'} AI Agent is temporarily unavailable. Try again in a moment.`});
+    console.error('KAI-61 primary error',err);
+    // One immediate recovery attempt: the agent should recover from transient model/tool
+    // failures instead of presenting itself as unavailable.
+    try {
+      const retry=await complete({system, prompt, maxTokens:1800, username, history});
+      return res.json({response:retry.text,mode:requestedMode,provider:'KAI-61',model:retry.model,responseMs:retry.elapsedMs,failoverAttempts:['retry'],knowledgeSource:'live-web',kaiAgent:retry.agent,kaiId:kaiId||null,webSteps:retry.steps||[],godEngineResource:godEngineRoute?.label||null});
+    }catch(retryErr){
+      console.error('KAI-61 recovery error',retryErr);
+      return res.status(503).json({error:'The agent is retrying the request. Please send it again in a moment.',retryable:true});
+    }
   }
 }
