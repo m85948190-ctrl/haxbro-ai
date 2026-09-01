@@ -16,14 +16,14 @@ export default async function(req,res){
     return {file:path,data:data};
   }).filter(function(f){return !!f.file;});
   if(!files.length){return res.status(400).json({error:'No valid generated files were provided.'});}
-  var payload={name:name,files:files,projectSettings:{framework:null,outputDirectory:null,installCommand:null,buildCommand:null,devCommand:null,rootDirectory:null}};
+  var payload={name:name,files:files,target:'production',projectSettings:{framework:null,outputDirectory:null,installCommand:null,buildCommand:null,devCommand:null,rootDirectory:null}};
   try{
     var tokens=[token1,token2].filter(Boolean);
     var lastStatus=503,lastData=null;
     for(var i=0;i<tokens.length;i++){
       var r=await fetch('https://api.vercel.com/v13/deployments?skipAutoDetectionConfirmation=1',{method:'POST',headers:{'Authorization':'Bearer '+tokens[i],'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var d=await r.json();
-      if(r.ok)return res.json({success:true,url:d.url||null,inspectUrl:d.inspectorUrl||null,state:d.readyState||'BUILDING',tokenSlot:i+1});
+      if(r.ok){var aliases=Array.isArray(d.alias)?d.alias:[];var publicAlias=aliases.find(function(a){return typeof a==='string'&&a.endsWith('.vercel.app')})||aliases[0]||null;var publicUrl=publicAlias?(publicAlias.indexOf('://')===0?publicAlias:'https://'+publicAlias):(d.url||null);return res.json({success:true,url:publicUrl,deploymentUrl:d.url||null,aliases:aliases,inspectUrl:d.inspectorUrl||null,state:d.readyState||'BUILDING',target:'production',tokenSlot:i+1});}
       lastStatus=r.status; lastData=d;
       if(r.status!==401&&r.status!==403&&r.status!==429)break;
     }
