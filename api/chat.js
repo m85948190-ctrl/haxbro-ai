@@ -43,14 +43,14 @@ export default async function(req,res){
   try{
     const result=await complete({system,prompt,maxTokens:1800,username,history});
     const responseText=godEngineRoute ? `GODENGINE RECOMMENDATION — ${godEngineRoute.category}: ${godEngineRoute.label}\n${godEngineRoute.url}\n\n${result.text}` : result.text;
-    return res.json({response:responseText,mode:requestedMode,provider:'KAI-61',model:result.model,responseMs:result.elapsedMs,failoverAttempts:[],knowledgeSource:'live-web',kaiAgent:result.agent,kaiId:kaiId||null,webSteps:result.steps||[],godEngineResource:godEngineRoute?.label||null});
+    return res.json({response:responseText,mode:requestedMode,provider:result.provider,model:result.model,responseMs:result.elapsedMs,status:result.status,failoverAttempts:result.attempts||[],knowledgeSource:result.status==='final-fallback'?'KAI-51 web research':'provider-api',kaiAgent:result.agent,kaiId:kaiId||null,webSteps:result.steps||[],godEngineResource:godEngineRoute?.label||null});
   }catch(err){
     console.error('KAI-61 primary error',err);
     // One immediate recovery attempt: the agent should recover from transient model/tool
     // failures instead of presenting itself as unavailable.
     try {
       const retry=await complete({system, prompt, maxTokens:1800, username, history});
-      return res.json({response:retry.text,mode:requestedMode,provider:'KAI-61',model:retry.model,responseMs:retry.elapsedMs,failoverAttempts:['retry'],knowledgeSource:'live-web',kaiAgent:retry.agent,kaiId:kaiId||null,webSteps:retry.steps||[],godEngineResource:godEngineRoute?.label||null});
+      return res.json({response:retry.text,mode:requestedMode,provider:retry.provider,model:retry.model,responseMs:retry.elapsedMs,status:retry.status,failoverAttempts:retry.attempts||[],knowledgeSource:retry.status==='final-fallback'?'KAI-51 web research':'provider-api',kaiAgent:retry.agent,kaiId:kaiId||null,webSteps:retry.steps||[],godEngineResource:godEngineRoute?.label||null});
     }catch(retryErr){
       console.error('KAI-61 recovery error',retryErr);
       return res.status(503).json({error:'I could not complete that request right now. Please try again.',retryable:false});
