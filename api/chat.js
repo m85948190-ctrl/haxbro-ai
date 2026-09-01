@@ -53,7 +53,7 @@ export default async function(req,res){
       return res.json({response:retry.text,mode:requestedMode,provider:'KAI-61',model:retry.model,responseMs:retry.elapsedMs,failoverAttempts:['retry'],knowledgeSource:'live-web',kaiAgent:retry.agent,kaiId:kaiId||null,webSteps:retry.steps||[],godEngineResource:godEngineRoute?.label||null});
     }catch(retryErr){
       console.error('KAI-61 recovery error',retryErr);
-      return res.status(503).json({error:'The agent is retrying the request. Please send it again in a moment.',retryable:true});
+      return res.status(503).json({error:'I could not complete that request right now. Please try again.',retryable:false});
     }
   }
 }
