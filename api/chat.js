@@ -46,6 +46,6 @@ export default async function(req,res){
     return res.json({response:responseText,mode:requestedMode,provider:'KAI-61',model:result.model,responseMs:result.elapsedMs,failoverAttempts:[],knowledgeSource:'live-web',kaiAgent:result.agent,kaiId:kaiId||null,webSteps:result.steps||[],godEngineResource:godEngineRoute?.label||null});
   }catch(err){
     console.error('KAI-61 error',err);
-    return res.status(502).json({error:'KAI-61 is temporarily unavailable. Try again in a moment.'});
+    return res.status(502).json({error:`${username || 'Your'} AI Agent is temporarily unavailable. Try again in a moment.`});
   }
 }
