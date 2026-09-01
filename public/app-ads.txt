@@ -1,0 +1,1 @@
+# HAxBRO does not currently use Google AdMob. Do not add an ads.txt/app-ads.txt seller entry unless an actual authorized ad account is configured.
