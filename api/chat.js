@@ -42,17 +42,33 @@ export default async function(req,res){
   let knowledgeContext='';
   let knowledgeSource='none';
   try{
-    const terms=prompt.toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.length>3).slice(0,8);
+    const terms=prompt.toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.length>3).slice(0,6);
     const supabaseUrl=process.env.SUPABASE_URL || 'https://xorgweiijpupsxugteuh.supabase.co';
     const supabaseKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
     if(terms.length && supabaseKey){
-      const phrase=encodeURIComponent('*'+terms.join('*')+'*');
-      const url=`${supabaseUrl}/rest/v1/haxbro_knowledge_chunks?select=chunk_index,content,source_id,haxbro_knowledge_sources(url,title,fetched_at)&or=(content.ilike.${phrase},haxbro_knowledge_sources.title.ilike.${phrase})&limit=8`;
-      const r=await fetch(url,{headers:{apikey:supabaseKey,authorization:`Bearer ${supabaseKey}`}});
-      const data=await r.json();
-      if(r.ok && Array.isArray(data) && data.length){
+      const headers={apikey:supabaseKey,authorization:`Bearer ${supabaseKey}`};
+      const hits=[];
+      for(const term of terms){
+        const url=`${supabaseUrl}/rest/v1/haxbro_chunks?select=id,page_id,chunk_index,content&content=ilike.*${encodeURIComponent(term)}*&limit=4`;
+        const r=await fetch(url,{headers});
+        if(!r.ok) continue;
+        const rows=await r.json();
+        if(Array.isArray(rows)) hits.push(...rows);
+      }
+      const unique=[...new Map(hits.map(x=>[x.id,x])).values()].slice(0,8);
+      if(unique.length){
+        const enriched=await Promise.all(unique.map(async x=>{
+          try{
+            const p=await fetch(`${supabaseUrl}/rest/v1/haxbro_pages?select=id,title,source_id,url&id=eq.${encodeURIComponent(x.page_id)}`,{headers});
+            const pages=await p.json(); const page=Array.isArray(pages)?pages[0]:null;
+            if(!page) return {...x};
+            const s=await fetch(`${supabaseUrl}/rest/v1/haxbro_sources?select=url,title,metadata&id=eq.${encodeURIComponent(page.source_id)}`,{headers});
+            const sources=await s.json(); const source=Array.isArray(sources)?sources[0]:null;
+            return {...x,page_title:page.title,page_url:page.url,source_url:source?.url||page.url,source_title:source?.title||page.title};
+          }catch(e){ return {...x}; }
+        }));
         knowledgeSource='supabase';
-        knowledgeContext='\\n\\nHAxBRO SUPABASE KNOWLEDGE (use when relevant; do not mention internal retrieval):\\n'+data.map((x,i)=>`[${i+1}] ${x.haxbro_knowledge_sources?.title||x.haxbro_knowledge_sources?.url||'Source'}\\n${String(x.content||'').slice(0,3500)}\\nSOURCE: ${x.haxbro_knowledge_sources?.url||''}`).join('\\n\\n');
+        knowledgeContext='\\n\\nHAxBRO SUPABASE KNOWLEDGE (use when relevant; do not mention internal retrieval):\\n'+enriched.map((x,i)=>`[${i+1}] ${x.source_title||x.page_title||'Source'}\\n${String(x.content||'').slice(0,3500)}\\nSOURCE: ${x.source_url||x.page_url||''}`).join('\\n\\n');
       }
     }
   }catch(e){ console.warn('Supabase knowledge retrieval unavailable',e?.message||e); }
