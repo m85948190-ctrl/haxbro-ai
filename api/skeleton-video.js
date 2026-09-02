@@ -14,7 +14,7 @@ export default async function(req,res){
   const finalPrompt=`${prompt}\n\nProduction requirements: exact 10-second commercial. Professional black tailored coat on the skeleton host. The host must visibly interact with a tablet and click/open the HAxBRO App Maker section. Preserve the HAxBRO visual identity and UI appearance exactly as the provided product description; do not invent a different app. Strong opening hook. Cinematic photorealistic 3D. Clear professional male dialogue. Smooth camera and hand motion.`;
 
   try{
-    const response=await fetch('https://router.huggingface.co/fal-ai/wan/v2.7/text-to-video',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({inputs:finalPrompt,parameters:{duration:10,aspect_ratio:'16:9',negative_prompt:DEFAULT_NEGATIVE}})});
+    const response=await fetch('https://router.huggingface.co/fal-ai/minimax-h3',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({inputs:finalPrompt,parameters:{duration:10,aspect_ratio:'16:9',negative_prompt:DEFAULT_NEGATIVE}})});
     const type=response.headers.get('content-type')||'';
     if(!response.ok){const text=await response.text();return res.status(response.status).json({error:`Video provider error: ${text.slice(0,700)}`});}
     if(type.includes('application/json')){
