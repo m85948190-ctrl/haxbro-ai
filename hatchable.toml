@@ -40,16 +40,16 @@ expose = true
 description = "Optional Hugging Face token for Kai model fallback"
 
 [[secret]]
-name = "VERCEL_TOKEN_1"
-required = false
+name = "NETLIFY_OAUTH_CLIENT_ID"
+required = true
 expose = true
-description = "Vercel token 1 used server-side by HAxBRO to publish generated apps"
+description = "Netlify OAuth application Client ID for HAxBRO App Maker"
 
 [[secret]]
-name = "VERCEL_TOKEN_2"
-required = false
+name = "NETLIFY_OAUTH_CLIENT_SECRET"
+required = true
 expose = true
-description = "Vercel token 2 used server-side by HAxBRO to publish generated apps"
+description = "Netlify OAuth application Client Secret for HAxBRO App Maker"
 
 [[secret]]
 name = "SUPABASE_SERVICE_ROLE_KEY"

@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS netlify_oauth_sessions (session_id TEXT PRIMARY KEY, state TEXT UNIQUE NOT NULL, access_token TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), expires_at TIMESTAMPTZ);
