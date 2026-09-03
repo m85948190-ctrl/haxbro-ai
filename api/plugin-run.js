@@ -1,4 +1,4 @@
-import { ai } from 'hatchable';
+import { complete } from '../lib/kai.js';
 
 export const access = 'public';
 export const methods = ['POST'];
@@ -35,6 +35,12 @@ export default async function(req,res){
     } else if(pluginId==='web-research'){
       const d=await json(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=5&format=json&origin=*`);
       result={query:q,items:(d.query?.search||[]).map(x=>({title:x.title,snippet:x.snippet.replace(/<[^>]+>/g,''),url:'https://en.wikipedia.org/wiki/'+encodeURIComponent(x.title.replace(/ /g,'_'))}))};
+    } else if(pluginId==='huggingface'){
+      const key=process.env.HF_TOKEN;
+      if(!key) throw new Error('Hugging Face token is not configured.');
+      const r=await fetch('https://router.huggingface.co/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${key}`},body:JSON.stringify({model:'Qwen/Qwen2.5-7B-Instruct',messages:[{role:'user',content:q}],max_tokens:1800,temperature:0.2})});
+      const raw=await r.text(); if(!r.ok) throw new Error(`Hugging Face HTTP ${r.status}: ${raw.slice(0,500)}`);
+      const d=JSON.parse(raw); result={content:d?.choices?.[0]?.message?.content||'Hugging Face returned no text.',provider:'Hugging Face',model:'Qwen/Qwen2.5-7B-Instruct'};
     } else {
       const instructions={
         'code-builder':'Act as a production software engineer. Solve the request with complete, correct code when code is requested. Do not merely give a prompt.',
@@ -60,8 +66,8 @@ export default async function(req,res){
         'knowledge-bridge':'Answer using HAxBRO knowledge context and clearly distinguish verified information from general reasoning.'
       };
       const system=instructions[pluginId]||'Directly execute the selected HAxBRO plugin task. Do not merely rewrite the request as a prompt.';
-      const r=await ai.generateText({model:'sonnet',system,prompt:q,maxTokens:2200,purpose:`haxbro-plugin:${pluginId}`});
-      result={content:r.text||String(r)};
+      const r=await complete({system,prompt:q,maxTokens:2200,username:req.body?.username||'',history:req.body?.history||''});
+      result={content:r.text||String(r),provider:r.provider,model:r.model,status:r.status};
     }
     return res.json({ok:true,pluginId,result,executed:true,executedAt:new Date().toISOString()});
   }catch(e){ console.error('plugin-run',pluginId,e); return res.status(502).json({error:e.message||'Plugin execution failed.',executed:false}); }
