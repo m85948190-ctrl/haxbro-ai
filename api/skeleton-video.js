@@ -1,32 +1,48 @@
 import { storage } from 'hatchable';
+
 export const access = 'public';
+export const methods = ['POST'];
 
-const DEFAULT_NEGATIVE='horror, gore, blood, weapons, extra characters, duplicate skeletons, distorted hands, malformed tablet, unreadable UI, random logos, broken text, camera shake, low quality';
+const VIDEO_ENDPOINT = 'https://router.huggingface.co/fal-ai/minimax/h3/text-to-video';
 
-export default async function(req,res){
-  if(req.method!=='POST') return res.status(405).json({error:'POST only'});
-  const prompt=String(req.body?.prompt||'').trim();
-  if(!prompt) return res.status(400).json({error:'Prompt is required'});
-  if(prompt.length>200000) return res.status(413).json({error:'Prompt is too large'});
-  const token=process.env.HF_TOKEN;
-  if(!token) return res.status(503).json({error:'HF_TOKEN is not configured for video inference.'});
+export default async function(req, res) {
+  const body = req.body || {};
+  const prompt = typeof body.prompt === 'string' ? body.prompt.trim().slice(0, 12000) : '';
+  if (!prompt) return res.status(400).json({ error: 'prompt required' });
 
-  const finalPrompt=`${prompt}\n\nProduction requirements: exact 10-second commercial. Professional black tailored coat on the skeleton host. The host must visibly interact with a tablet and click/open the HAxBRO App Maker section. Preserve the HAxBRO visual identity and UI appearance exactly as the provided product description; do not invent a different app. Strong opening hook. Cinematic photorealistic 3D. Clear professional male dialogue. Smooth camera and hand motion.`;
+  const token = process.env.HF_TOKEN;
+  if (!token) return res.status(503).json({ error: 'Video generation needs the optional Hugging Face token configured for HAxBRO.' });
 
-  try{
-    const response=await fetch('https://router.huggingface.co/fal-ai/minimax-h3',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({inputs:finalPrompt,parameters:{duration:10,aspect_ratio:'16:9',negative_prompt:DEFAULT_NEGATIVE}})});
-    const type=response.headers.get('content-type')||'';
-    if(!response.ok){const text=await response.text();return res.status(response.status).json({error:`Video provider error: ${text.slice(0,700)}`});}
-    if(type.includes('application/json')){
-      const data=await response.json();
-      const url=data?.video?.url||data?.video_url||data?.output?.video?.url||data?.output?.[0]?.url||data?.url;
-      if(url)return res.json({videoUrl:url,provider:'huggingface-fal'});
-      return res.status(502).json({error:'Provider returned JSON without a video URL.',details:data});
+  const finalPrompt = `${prompt}\n\nCreate the finished video itself, not a storyboard or text prompt. Vertical 9:16 social-media reel. Exactly 10 seconds. Professional black tailored coat skeleton presenter in a dark futuristic developer/cybersecurity environment. Cinematic photorealistic 3D, natural confident presenter performance, smooth camera and hand motion, polished commercial quality, readable typography. Include synchronized natural presenter audio when supported.`;
+
+  try {
+    const response = await fetch(VIDEO_ENDPOINT, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: finalPrompt, aspect_ratio: '9:16', duration: 10 })
+    });
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok) {
+      const raw = await response.text();
+      return res.status(502).json({ error: `Video provider error: ${raw.slice(0, 1000)}` });
     }
-    const bytes=Buffer.from(await response.arrayBuffer());
-    const url=await storage.put(`skeleton-video/${Date.now()}.mp4`,bytes,'video/mp4');
-    return res.json({videoUrl:url,provider:'huggingface-fal'});
-  }catch(e){
-    return res.status(500).json({error:e?.message||'Video generation failed'});
+
+    if (contentType.includes('video/')) {
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const key = `reels/${Date.now()}-haxbro.mp4`;
+      const url = await storage.put(key, bytes, 'video/mp4');
+      return res.json({ ok: true, videoUrl: url, duration: 10, provider: 'Hugging Face / fal.ai' });
+    }
+
+    const raw = await response.text();
+    let data = null;
+    try { data = JSON.parse(raw); } catch {}
+    const directUrl = data?.video?.url || data?.video_url || data?.url || data?.output?.url || (typeof data?.output === 'string' ? data.output : '') || '';
+    if (directUrl) return res.json({ ok: true, videoUrl: directUrl, duration: 10, provider: 'Hugging Face / fal.ai' });
+
+    return res.status(502).json({ error: 'Video provider returned no playable video.' });
+  } catch (err) {
+    console.error('HAxBRO reel video error', err);
+    return res.status(502).json({ error: `Video generation failed: ${String(err?.message || err).slice(0, 800)}` });
   }
 }
