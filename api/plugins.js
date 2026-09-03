@@ -33,5 +33,5 @@ const plugins = [
 
 export default async function(req,res){
   if(req.method!=="GET") return res.status(405).json({error:"Method not allowed"});
-  res.json({ok:true,plugins,generatedAt:new Date().toISOString()});
+  res.json({ok:true,plugins:plugins.map(p=>({...p,execution:p.type==='external'?'live-api':'live-ai-tool'})),generatedAt:new Date().toISOString()});
 }
