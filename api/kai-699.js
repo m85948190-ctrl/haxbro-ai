@@ -1,45 +1,60 @@
-import { db } from 'hatchable';
-
 export const access = 'public';
-export const methods = ['POST'];
+export const methods = ['GET','POST'];
 
-const clean=(s)=>String(s||'').replace(/[<>]/g,'').trim().slice(0,120);
-const safePath=(p)=>String(p||'').replace(/^\/+/, '').slice(0,180);
-const providers=[
-  {name:'HAxBRO Public App Engine',type:'native',free:true,anonymous:true,deployable:true,reason:'Purpose-built public host inside HAxBRO; no customer hosting account required.'},
-  {name:'Cloudflare Pages',type:'external',free:true,anonymous:false,deployable:false,reason:'Free tier exists, but deployment requires an authorized Cloudflare account/token.'},
-  {name:'Vercel',type:'external',free:true,anonymous:false,deployable:false,reason:'Free tier exists, but deployment requires an authorized project/account token.'},
-  {name:'Netlify',type:'external',free:true,anonymous:false,deployable:false,reason:'Free tier exists, but deployment requires an authorized account/token.'},
-  {name:'Render Static Sites',type:'external',free:true,anonymous:false,deployable:false,reason:'Free static hosting exists, but deployment is account/project based.'}
+const CANDIDATES = [
+  {name:'ShipSite', url:'https://shipsite.co', free:true, anonymous:true, permanent:false, note:'Anonymous static deployments; public URL; free tier; temporary.'},
+  {name:'ShipStatic', url:'https://shipstatic.com', free:true, anonymous:true, permanent:false, note:'Anonymous static deployments; public URL; free; temporary unless claimed.'},
+  {name:'HTMLDrop', url:'https://www.htmldrop.in', free:true, anonymous:true, permanent:false, note:'Anonymous HTML hosting; free; temporary unless claimed.'},
+  {name:'Cloudflare Drop', url:'https://www.cloudflare.com/drop/', free:true, anonymous:true, permanent:false, note:'Temporary public drop; not the default provider.'},
+  {name:'Vercel', url:'https://vercel.com', free:true, anonymous:false, permanent:true, note:'Requires an authorized account/token.'},
+  {name:'Netlify', url:'https://www.netlify.com', free:true, anonymous:false, permanent:true, note:'Requires an authorized account/token.'}
 ];
 
 async function probe(url){
-  try{
-    const r=await fetch(url,{method:'HEAD'});
-    return {online:r.status>=200&&r.status<500,status:r.status};
-  }catch(e){return {online:false,status:0};}
+  try { const r=await fetch(url,{method:'HEAD',redirect:'follow'}); return {online:r.status<500,status:r.status}; }
+  catch(e){ return {online:false,status:null}; }
+}
+
+function cleanPath(value){
+  return String(value||'').split('/').filter(part=>part && part!=='.' && part!=='..').join('/').slice(0,180);
+}
+
+async function shipsite(files,name){
+  const safe=files.slice(0,20).map(f=>({
+    path:cleanPath(f.path),
+    content:String(f.content||'').slice(0,200000),
+    contentType:f.contentType || (String(f.path).endsWith('.css')?'text/css':String(f.path).endsWith('.js')?'application/javascript':'text/html')
+  })).filter(f=>f.path && f.content.length);
+  if(!safe.some(f=>f.path==='index.html')) throw new Error('Generated app must contain index.html.');
+  const create=await fetch('https://shipsite.co/api/v1/publish',{
+    method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({files:safe.map(f=>({path:f.path,size:new TextEncoder().encode(f.content).length,contentType:f.contentType})),viewer:{title:String(name||'HAxBRO App').slice(0,200),description:'Published by KAI 699'}})
+  });
+  const data=await create.json();
+  if(!create.ok) throw new Error(data?.error||data?.message||'ShipSite create failed');
+  for(const u of (data.upload?.uploads||[])){
+    const f=safe.find(x=>x.path===u.path);
+    if(!f) continue;
+    const put=await fetch(u.url,{method:'PUT',headers:{...(u.headers||{}),'Content-Type':f.contentType},body:f.content});
+    if(!put.ok) throw new Error(`ShipSite upload failed for ${u.path}: ${put.status}`);
+  }
+  const fin=await fetch(data.upload.finalizeUrl,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({versionId:data.upload.versionId,claimToken:data.claimToken})});
+  const done=await fin.json();
+  if(!fin.ok) throw new Error(done?.error||done?.message||'ShipSite finalize failed');
+  return {provider:'ShipSite',url:done.siteUrl||data.siteUrl,claimUrl:data.claimUrl||null,expiresAt:data.expiresAt||null,temporary:true};
 }
 
 export default async function(req,res){
-  const body=req.body||{};
-  const action=body.action||'deploy';
-  if(action==='discover'){
-    const checks=await Promise.all([
-      probe('https://haxbro.hatchable.site/'),
-      probe('https://pages.cloudflare.com/'),
-      probe('https://vercel.com/'),
-      probe('https://www.netlify.com/'),
-      probe('https://render.com/')
-    ]);
-    return res.json({ok:true,agent:'KAI 699',policy:'free-first',checkedAt:new Date().toISOString(),providers:providers.map((p,i)=>({...p,online:checks[i]?.online??false,status:checks[i]?.status??0})),selected:'HAxBRO Public App Engine'});
+  if(req.method==='GET'){
+    const checked=await Promise.all(CANDIDATES.map(async p=>({...p,...await probe(p.url)})));
+    return res.json({ok:true,agent:'KAI 699',policy:'external-free-first',selectedPolicy:'anonymous public deployment when available',providers:checked});
   }
-  const name=clean(body.name)||'HAxBRO App';
-  const files=Array.isArray(body.files)?body.files:[];
-  const safeFiles=files.filter(f=>f&&typeof f.path==='string'&&typeof f.content==='string').slice(0,40).map(f=>({path:safePath(f.path),content:f.content.slice(0,100000)}));
-  if(!safeFiles.length) return res.status(400).json({ok:false,error:'Build an app first.'});
-  const {rows}=await db.query('INSERT INTO haxbro_generated_apps (name,files) VALUES ($1,$2) RETURNING id',[name,JSON.stringify(safeFiles)]);
-  const id=rows[0].id;
-  const origin=new URL(req.url,'https://haxbro.hatchable.site').origin;
-  const url=`${origin}/apps/${id}`;
-  return res.json({ok:true,agent:'KAI 699',id,url,name,provider:'HAxBRO Public App Engine',free:true,public:true,accountRequired:false,decision:'Used the purpose-built HAxBRO public host because it is free, public, and does not require the customer to own a third-party hosting account.',fallbacks:providers.slice(1)});
+  const files=Array.isArray(req.body?.files)?req.body.files:[];
+  if(!files.length) return res.status(400).json({ok:false,error:'No app files supplied.'});
+  try{
+    const result=await shipsite(files,req.body?.name);
+    return res.json({ok:true,agent:'KAI 699',policy:'external-free-first',hosting:result.provider,provider:result.provider,free:true,public:true,accountRequired:false,...result});
+  }catch(error){
+    return res.status(502).json({ok:false,agent:'KAI 699',error:String(error?.message||error),providersTried:['ShipSite'],fallbackAvailable:true});
+  }
 }
