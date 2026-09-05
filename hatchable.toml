@@ -40,16 +40,28 @@ expose = true
 description = "Optional Hugging Face token for Kai model fallback"
 
 [[secret]]
-name = "NETLIFY_OAUTH_CLIENT_ID"
-required = true
+name = "CLOUDFLARE_API_TOKEN"
+required = false
 expose = true
-description = "Netlify OAuth application Client ID for HAxBRO App Maker"
+description = "Cloudflare API token with Pages Write permission for public HAxBRO App Maker deployments"
+
+[[secret]]
+name = "CLOUDFLARE_ACCOUNT_ID"
+required = false
+expose = true
+description = "Cloudflare account ID used for public Pages deployments"
+
+[[secret]]
+name = "NETLIFY_OAUTH_CLIENT_ID"
+required = false
+expose = true
+description = "Legacy Netlify OAuth Client ID; no longer used by the App Maker UI"
 
 [[secret]]
 name = "NETLIFY_OAUTH_CLIENT_SECRET"
-required = true
+required = false
 expose = true
-description = "Netlify OAuth application Client Secret for HAxBRO App Maker"
+description = "Legacy Netlify OAuth Client Secret; no longer used by the App Maker UI"
 
 [[secret]]
 name = "SUPABASE_SERVICE_ROLE_KEY"
