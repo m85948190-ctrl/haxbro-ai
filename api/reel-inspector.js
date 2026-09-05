@@ -1,39 +1,4 @@
-export const access = 'public';
-export const methods = ['POST'];
-
-// KAI 56 VISUAL BIBLE: the inspector's compact, deterministic knowledge base.
-// It is intentionally local and fast: no external vision/video service is required.
-const VISUAL_BIBLE = {
-  style: 'premium vertical 3D animation, clean silhouettes, believable depth, cinematic lighting, polished motion',
-  canvas: {aspectRatio:'9:16', width:720, height:1280},
-  anatomy: 'clear head/torso/pelvis hierarchy, articulated shoulders elbows wrists hips knees ankles, grounded feet',
-  skeleton: 'ivory bone structure, skull with two bright red glowing eyes, dark oversized coat, readable hands and feet',
-  spongebobSkeleton: 'cartoon-skeleton proportions, expressive face, readable limbs, clean yellow/blue accent treatment without losing skeletal identity',
-  tablet: 'dark tablet with bright HAxBRO interface, readable HAxBRO branding, green/blue UI accents, physically held by character',
-  lighting: 'cool blue-white key light, green rim/accent light, controlled shadows and depth separation',
-  motion: 'full-body weight shift, shoulder/elbow/wrist articulation, hip/knee/ankle motion, head/eye direction, camera movement',
-  composition: 'character remains inside vertical safe area, face and hands remain readable, no important content cropped',
-  audio: 'dialogue should remain synchronized conceptually with the scripted performance; native music stays secondary'
-};
-
-function grade(b={}) {
-  const m=b.metrics||{};
-  let score=0, checks=[];
-  const add=(name,ok,weight)=>{checks.push({name,ok}); if(ok)score+=weight};
-  add('vertical composition', m.aspectRatio===true || Number(m.width)>0 && Number(m.height)>Number(m.width), 15);
-  add('visible 3D depth', Number(m.depthVariation||0)>0, 20);
-  add('full-body motion', Number(m.motionSamples||0)>=3, 20);
-  add('limb articulation', Number(m.jointMotion||0)>=3, 15);
-  add('character silhouette', m.characterVisible!==false, 10);
-  add('HAxBRO UI/detail', m.haxbroDetail===true || m.tablet===true || m.scriptMentioned===true, 10);
-  add('safe framing', m.safeFrame!==false, 5);
-  add('lighting/depth separation', m.lighting===true || Number(m.depthVariation||0)>2, 5);
-  const label=score>=80?'GOOD':score>=55?'MEDIUM':'BAD';
-  return {score,label,checks};
-}
-
-export default async function(req,res){
-  const b=req.body||{};
-  const result=grade(b);
-  res.json({ok:true,agent:'KAI 56',role:'Visual Quality Inspector',decision:'ADVISORY_ONLY',blocksDelivery:false,reject:false,grade:result.label,score:result.score,checks:result.checks,visualBible:VISUAL_BIBLE,inspectionSpeed:'local-fast'});
-}
+export const access='public';
+export const methods=['POST'];
+const VISUAL_BIBLE={referenceCount:150,style:'polished real-time 3D animation',anatomy:'complete head, jaw, neck, torso, pelvis, arms, hands, legs and feet with articulated joints',skeleton:'recognizable skull, bone structure, emissive red eyes and oversized black coat',motion:'whole-body weight transfer plus shoulders, elbows, wrists, hips, knees and ankles',depth:'true WebGL perspective/depth buffer, lighting, shadows and near/far scale',camera:'vertical 9:16, safe framing, readable face and hands',quality:'never accept a box with a circle and stick limbs as a target skeleton'};
+export default async function(req,res){const b=req.body||{},m=b.metrics||{};let score=0,checks=[];const add=(name,ok,w)=>{checks.push({name,ok});if(ok)score+=w};add('vertical composition',m.aspectRatio===true,15);add('real WebGL 3D',m.webgl3D===true,25);add('depth variation',Number(m.depthVariation||0)>0,15);add('full-body motion',Number(m.motionSamples||0)>=3,15);add('joint articulation',Number(m.jointMotion||0)>=3,10);add('character visible',m.characterVisible!==false,5);add('lighting and shadows',m.lighting===true,5);add('safe framing',m.safeFrame!==false,5);add('HAxBRO detail',m.haxbroDetail===true||m.tablet===true||m.scriptMentioned===true,5);const label=score>=80?'GOOD':score>=55?'MEDIUM':'BAD';res.json({ok:true,agent:'KAI 56',role:'Visual Quality Inspector',decision:'ADVISORY_ONLY',blocksDelivery:false,reject:false,grade:label,score,checks,visualBible:VISUAL_BIBLE,inspectionSpeed:'local-fast'});}
