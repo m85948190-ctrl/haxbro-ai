@@ -9,8 +9,8 @@ export const methods = ['GET','POST'];
 export default async function(req,res){
   if(req.method==='GET'){
     try{
-      const {rows}=await db.query("SELECT to_regclass('public.haxbro_generated_apps') AS table_name");
-      const ready=Boolean(rows?.[0]?.table_name);
+      const {rows}=await db.query("SELECT 1 AS ready FROM information_schema.tables WHERE table_schema='public' AND table_name='haxbro_generated_apps' LIMIT 1");
+      const ready=rows?.length>0;
       return res.json({
         ok:ready,
         agent:'KAI 69',
