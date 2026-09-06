@@ -1,6 +1,6 @@
 import { complete } from 'lib/kai';
 
-export const access = 'public';
+export const access = 'user';
 export const methods = ['POST'];
 
 const safe=(s)=>String(s||'').slice(0,12000);

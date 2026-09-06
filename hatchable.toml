@@ -3,6 +3,13 @@ required = true
 providers = ["openai", "google"]
 description = "HAxBRO Kai free-first multi-provider failover: OpenAI, Google Gemini, Groq, Mistral, OpenRouter, and Hugging Face"
 
+[auth]
+enabled = true
+providers = ["email", "google"]
+signup = "open"
+hosted_login = true
+login_path = "/login"
+
 [[secret]]
 name = "OPENAI_API_KEY"
 required = false
