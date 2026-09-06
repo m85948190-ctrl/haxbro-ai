@@ -1,7 +1,7 @@
 {
   "name":"HAxBRO",
   "short_name":"HAxBRO",
-  "start_url":"/",
+  "start_url":"/?app=1",
   "scope":"/",
   "display":"standalone",
   "background_color":"#020711",
