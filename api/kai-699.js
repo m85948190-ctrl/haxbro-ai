@@ -1,60 +1,44 @@
+import { db } from 'hatchable';
+
 export const access = 'public';
 export const methods = ['GET','POST'];
 
-const CANDIDATES = [
-  {name:'ShipSite', url:'https://shipsite.co', free:true, anonymous:true, permanent:false, note:'Anonymous static deployments; public URL; free tier; temporary.'},
-  {name:'ShipStatic', url:'https://shipstatic.com', free:true, anonymous:true, permanent:false, note:'Anonymous static deployments; public URL; free; temporary unless claimed.'},
-  {name:'HTMLDrop', url:'https://www.htmldrop.in', free:true, anonymous:true, permanent:false, note:'Anonymous HTML hosting; free; temporary unless claimed.'},
-  {name:'Cloudflare Drop', url:'https://www.cloudflare.com/drop/', free:true, anonymous:true, permanent:false, note:'Temporary public drop; not the default provider.'},
-  {name:'Vercel', url:'https://vercel.com', free:true, anonymous:false, permanent:true, note:'Requires an authorized account/token.'},
-  {name:'Netlify', url:'https://www.netlify.com', free:true, anonymous:false, permanent:true, note:'Requires an authorized account/token.'}
-];
-
-async function probe(url){
-  try { const r=await fetch(url,{method:'HEAD',redirect:'follow'}); return {online:r.status<500,status:r.status}; }
-  catch(e){ return {online:false,status:null}; }
-}
-
-function cleanPath(value){
-  return String(value||'').split('/').filter(part=>part && part!=='.' && part!=='..').join('/').slice(0,180);
-}
-
-async function shipsite(files,name){
-  const safe=files.slice(0,20).map(f=>({
-    path:cleanPath(f.path),
-    content:String(f.content||'').slice(0,200000),
-    contentType:f.contentType || (String(f.path).endsWith('.css')?'text/css':String(f.path).endsWith('.js')?'application/javascript':'text/html')
-  })).filter(f=>f.path && f.content.length);
-  if(!safe.some(f=>f.path==='index.html')) throw new Error('Generated app must contain index.html.');
-  const create=await fetch('https://shipsite.co/api/v1/publish',{
-    method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({files:safe.map(f=>({path:f.path,size:new TextEncoder().encode(f.content).length,contentType:f.contentType})),viewer:{title:String(name||'HAxBRO App').slice(0,200),description:'Published by KAI 699'}})
-  });
-  const data=await create.json();
-  if(!create.ok) throw new Error(data?.error||data?.message||'ShipSite create failed');
-  for(const u of (data.upload?.uploads||[])){
-    const f=safe.find(x=>x.path===u.path);
-    if(!f) continue;
-    const put=await fetch(u.url,{method:'PUT',headers:{...(u.headers||{}),'Content-Type':f.contentType},body:f.content});
-    if(!put.ok) throw new Error(`ShipSite upload failed for ${u.path}: ${put.status}`);
-  }
-  const fin=await fetch(data.upload.finalizeUrl,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({versionId:data.upload.versionId,claimToken:data.claimToken})});
-  const done=await fin.json();
-  if(!fin.ok) throw new Error(done?.error||done?.message||'ShipSite finalize failed');
-  return {provider:'ShipSite',url:done.siteUrl||data.siteUrl,claimUrl:data.claimUrl||null,expiresAt:data.expiresAt||null,temporary:true};
-}
-
+// KAI 69 now uses HAxBRO's own public App Engine instead of unreliable
+// third-party "free host" discovery. That makes the deployment path owned,
+// predictable, and compatible with the app builder already shipped in HAxBRO.
 export default async function(req,res){
   if(req.method==='GET'){
-    const checked=await Promise.all(CANDIDATES.map(async p=>({...p,...await probe(p.url)})));
-    return res.json({ok:true,agent:'KAI 699',policy:'external-free-first',selectedPolicy:'anonymous public deployment when available',providers:checked});
+    try{
+      const {rows}=await db.query("SELECT to_regclass('public.haxbro_generated_apps') AS table_name");
+      const ready=Boolean(rows?.[0]?.table_name);
+      return res.json({
+        ok:ready,
+        agent:'KAI 69',
+        policy:'HAxBRO-owned-public-engine',
+        selected:'HAxBRO App Engine',
+        providers:[{
+          name:'HAxBRO App Engine',
+          free:true,
+          anonymous:true,
+          deployable:ready,
+          reason:ready?'Native HAxBRO public deployment is ready.':'Generated-app storage is not initialized yet.'
+        }]
+      });
+    }catch(error){
+      return res.status(503).json({ok:false,agent:'KAI 69',error:String(error?.message||error)});
+    }
   }
+
   const files=Array.isArray(req.body?.files)?req.body.files:[];
-  if(!files.length) return res.status(400).json({ok:false,error:'No app files supplied.'});
+  if(!files.length) return res.status(400).json({ok:false,agent:'KAI 69',error:'Build an app first, then send its files to KAI 69 for deployment.'});
   try{
-    const result=await shipsite(files,req.body?.name);
-    return res.json({ok:true,agent:'KAI 699',policy:'external-free-first',hosting:result.provider,provider:result.provider,free:true,public:true,accountRequired:false,...result});
+    const name=String(req.body?.name||'HAxBRO App').replace(/[<>]/g,'').slice(0,120);
+    const safeFiles=files.filter(f=>f&&typeof f.path==='string'&&typeof f.content==='string').slice(0,40).map(f=>({path:String(f.path).replace(/^\/+/, '').slice(0,180),content:f.content.slice(0,100000)}));
+    if(!safeFiles.length) return res.status(400).json({ok:false,agent:'KAI 69',error:'No valid app files supplied.'});
+    const {rows}=await db.query('INSERT INTO haxbro_generated_apps (name,files) VALUES ($1,$2) RETURNING id',[name,JSON.stringify(safeFiles)]);
+    const origin=new URL(req.url,'https://haxbro.hatchable.site').origin;
+    return res.json({ok:true,agent:'KAI 69',hosting:'HAxBRO App Engine',provider:'HAxBRO',free:true,public:true,accountRequired:false,id:rows[0].id,url:`${origin}/apps/${rows[0].id}`});
   }catch(error){
-    return res.status(502).json({ok:false,agent:'KAI 699',error:String(error?.message||error),providersTried:['ShipSite'],fallbackAvailable:true});
+    return res.status(502).json({ok:false,agent:'KAI 69',error:String(error?.message||error)});
   }
 }
