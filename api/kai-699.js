@@ -1,4 +1,4 @@
-import { browser } from 'hatchable';
+// External web discovery uses fetch so KAI 6-9-9 stays fast and independent of browser sessions.
 
 export const access = 'public';
 export const methods = ['GET','POST'];
@@ -40,7 +40,8 @@ async function webDiscover(){
   const found = [];
   for (const q of queries) {
     try {
-      const html = String(await browser.html('https://www.google.com/search?q=' + encodeURIComponent(q)) || '').slice(0, 120000);
+      const r = await fetch('https://www.google.com/search?q=' + encodeURIComponent(q), {headers:{'user-agent':'Mozilla/5.0 HAxBRO-KAI-699'}});
+      const html = String(await r.text() || '').slice(0, 120000);
       const urls = html.match(/https?:\/\/[^\s"'<>]+/g) || [];
       for (const raw of urls) {
         const url = raw.replace(/[)&,.;]+$/g, '');
