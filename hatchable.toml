@@ -5,7 +5,7 @@ description = "HAxBRO Kai free-first multi-provider failover: OpenAI, Google Gem
 
 [auth]
 enabled = true
-providers = ["email", "google"]
+providers = ["email"]
 signup = "open"
 hosted_login = true
 login_path = "/login"
