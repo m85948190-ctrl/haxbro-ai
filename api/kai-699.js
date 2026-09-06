@@ -88,7 +88,9 @@ export default async function(req,res){
   if (totalBytes > MAX_TOTAL_BYTES) return res.status(413).json({ok:false,agent:'KAI 6-9-9',error:'The generated static site is too large for anonymous free deployment.'});
   if (!files.some(f => f.path.toLowerCase() === 'index.html')) return res.status(400).json({ok:false,agent:'KAI 6-9-9',error:'The generated site must contain index.html.'});
 
-  const discovered = await webDiscover();
+  // Never make publishing wait on search-engine crawling. A verified no-login
+  // adapter is enough to publish; discovery is informational and can be slow.
+  const discoveredPromise = webDiscover().catch(() => []);
   const attempts = [];
   for (const host of knownHosts) {
     if (!host.free || !host.anonymous || host.loginRequired) continue;
@@ -96,11 +98,11 @@ export default async function(req,res){
       const deployed = await host.deploy(files);
       const check = await verifyUrl(deployed.url);
       attempts.push({host:host.name,deployed:true,verified:check.ok,status:check.status});
-      if (check.ok) return res.json({ok:true,agent:'KAI 6-9-9',hosting:'external',provider:host.name,free:true,public:true,accountRequired:false,url:deployed.url,expiresAt:deployed.expiresAt,claimToken:deployed.claimToken,discoveredWebHosts:discovered,attempts});
+      if (check.ok) return res.json({ok:true,agent:'KAI 6-9-9',hosting:'external',provider:host.name,free:true,public:true,accountRequired:false,url:deployed.url,expiresAt:deployed.expiresAt,claimToken:deployed.claimToken,discoveredWebHosts:await Promise.race([discoveredPromise,new Promise(resolve=>setTimeout(()=>resolve([]),100))]),attempts});
     } catch (error) {
       attempts.push({host:host.name,deployed:false,error:String(error?.message || error)});
     }
   }
 
-  return res.status(502).json({ok:false,agent:'KAI 6-9-9',hosting:'external-only',free:true,accountRequired:false,hatchableHostingFallback:false,error:'KAI 6-9-9 searched for external free/no-login hosting, but no verified deployment provider succeeded. HAxBRO hosting was not used as a fallback.',discoveredWebHosts:discovered,attempts});
+  return res.status(502).json({ok:false,agent:'KAI 6-9-9',hosting:'external-only',free:true,accountRequired:false,hatchableHostingFallback:false,error:'KAI 6-9-9 could not complete an external free/no-login deployment. HAxBRO hosting was not used as a fallback.',discoveredWebHosts:[],attempts});
 }
