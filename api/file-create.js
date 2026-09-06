@@ -1,7 +1,7 @@
 import { complete } from 'lib/kai';
 import { storage } from 'hatchable';
 
-export const access = 'user';
+export const access = 'public';
 export const methods = ['POST'];
 
 const enc = new TextEncoder();

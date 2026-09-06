@@ -1,6 +1,6 @@
 import { complete } from 'lib/kai';
 
-export const access = 'user';
+export const access = 'public';
 export const methods = ['POST'];
 
 const SYSTEM = `You are HAxBRO CODE WRITER BEAST, an elite software engineering agent.

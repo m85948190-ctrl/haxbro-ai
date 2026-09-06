@@ -4,7 +4,7 @@ providers = ["openai", "google"]
 description = "HAxBRO Kai free-first multi-provider failover: OpenAI, Google Gemini, Groq, Mistral, OpenRouter, and Hugging Face"
 
 [auth]
-enabled = true
+enabled = false
 providers = ["email"]
 signup = "open"
 hosted_login = true

@@ -1,6 +1,6 @@
 import { db } from 'hatchable';
 
-export const access = 'user';
+export const access = 'public';
 export const methods = ['POST'];
 
 const clean=(s)=>String(s||'').replace(/[<>]/g,'').slice(0,120);

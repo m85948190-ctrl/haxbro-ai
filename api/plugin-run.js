@@ -1,6 +1,6 @@
 import { complete } from '../lib/kai.js';
 
-export const access = 'user';
+export const access = 'public';
 export const methods = ['POST'];
 
 const json = (u, opts={}) => fetch(u, opts).then(async r => { const t=await r.text(); let d; try{d=JSON.parse(t)}catch{d=t}; if(!r.ok) throw new Error(`Provider returned HTTP ${r.status}`); return d; });
