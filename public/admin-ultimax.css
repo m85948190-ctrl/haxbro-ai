@@ -62,7 +62,7 @@ body.overdrive-ui .admin-ultimax-header{display:flex!important;visibility:visibl
 body.overdrive-ui .admin-ultimax-header .admin-ultimax-kicker{color:#ff5264!important;font:900 8px ui-monospace,monospace;letter-spacing:.2em}
 body.overdrive-ui .admin-ultimax-header strong{color:#fff!important;font:900 22px/1.05 Manrope,system-ui,sans-serif;letter-spacing:.12em}
 body.overdrive-ui .admin-ultimax-header small{color:#a95864!important;font:800 7px ui-monospace,monospace;letter-spacing:.14em;margin-top:4px}
-body.overdrive-ui .sidebar{background:linear-gradient(180deg,#0b0204,#070103)!important;border-right:1px solid #ff263f33!important}
+body.overdrive-ui .sidebar{background:linear-gradient(180deg,#0b0204,#070103)!important;border-right:1px solid #ff263f33!important;scrollbar-width:thin;scrollbar-color:#641521 transparent}body.overdrive-ui ::-webkit-scrollbar{width:7px;height:7px}body.overdrive-ui ::-webkit-scrollbar-track{background:#070103}body.overdrive-ui ::-webkit-scrollbar-thumb{background:#5d1420;border-radius:99px}body.overdrive-ui ::-webkit-scrollbar-thumb:hover{background:#a51b31}
 body.overdrive-ui .sidebar .side-title{visibility:hidden;height:0;min-height:0;padding:0;margin:0;overflow:hidden}
 body.overdrive-ui .sidebar .ai-tools:not(.admin-tools),body.overdrive-ui .sidebar .credit{display:none!important}
 body.overdrive-ui .mode-card,body.overdrive-ui .history,body.overdrive-ui .customer-profile{border-color:#641521!important;background:#0d0205!important;box-shadow:0 0 28px #ff263f08}
@@ -94,12 +94,39 @@ body.overdrive-ui .admin-password-gate{background:rgba(4,0,2,.88)!important}
 body.overdrive-ui .kai-panel:not(#ultimaxMode),body.overdrive-ui #codeLab,body.overdrive-ui #appMakerPanel,body.overdrive-ui #mediaConverterPanel{filter:none}
 
 @media(max-width:800px){
-  body.overdrive-ui .admin-ultimax-header{position:static;transform:none;margin:auto}
-  body.overdrive-ui .admin-ultimax-header strong{font-size:17px}
+  body.overdrive-ui .admin-ultimax-header{position:static;transform:none;margin:auto;max-width:calc(100vw - 120px)}
+  body.overdrive-ui .admin-ultimax-header strong{font-size:clamp(14px,4.5vw,17px);letter-spacing:.08em}
+  body.overdrive-ui .admin-ultimax-header .admin-ultimax-kicker{font-size:6px;letter-spacing:.14em}
+  body.overdrive-ui .admin-ultimax-header small{font-size:6px;letter-spacing:.08em;white-space:nowrap}
+  body.overdrive-ui .topbar{height:58px!important;padding:0 10px!important}
   body.overdrive-ui .top-actions{display:none}
+  body.overdrive-ui .sidebar{display:none!important}
+  body.overdrive-ui .app-shell{min-height:calc(100vh - 58px)!important}
+  body.overdrive-ui .chat-panel{width:100%!important;min-width:0!important}
+  body.overdrive-ui .chat-head{min-height:48px;padding:8px 12px!important}
+  body.overdrive-ui .chat-messages{padding:14px 10px 125px!important}
+  body.overdrive-ui .message{max-width:94%!important}
+  body.overdrive-ui .message .bubble{font-size:12px!important;line-height:1.55!important;padding:10px 11px!important}
+  body.overdrive-ui .composer{position:fixed!important;left:8px!important;right:8px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;margin:0!important;padding:6px!important;border-radius:15px!important;z-index:100!important}
+  body.overdrive-ui .composer .input-wrap{min-height:44px!important;border-radius:11px!important}
+  body.overdrive-ui .composer textarea{font-size:12px!important;min-height:38px!important;padding:9px 8px!important}
+  body.overdrive-ui .composer .send{width:42px!important;height:42px!important;min-width:42px!important;border-radius:11px!important}
+  body.overdrive-ui .float-tool{width:34px!important;height:34px!important}
   body.overdrive-ui .mobile-drawer .mode-card{border-color:#641521!important}
   body.overdrive-ui .mobile-drawer section:not(.history):not(.mobile-settings){display:none!important}
   body.overdrive-ui .mobile-drawer #mobileAdminTools{display:block!important}
   body.overdrive-ui .mobile-drawer .mobile-drawer-head{background:#0d0205!important;border-color:#ff263f33!important;color:#ff6677!important}
+  body.overdrive-ui #adminTools{margin:8px!important;padding:10px!important;border-radius:14px!important}
+  body.overdrive-ui #adminTools .kai-network-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  body.overdrive-ui #adminTools .kai-node{min-height:44px!important;padding:7px!important;border-radius:9px!important}
   .ultimax-mode{background:#050102}.ultimax-shell{width:100vw;border-left:0}.ultimax-head{min-height:76px;padding:14px 16px}.ultimax-head h1{font-size:21px}.ultimax-messages{padding:20px 14px 145px}.ultimax-composer{left:10px;right:10px;bottom:38px}.ultimax-composer button{padding:0 12px}.ultimax-hint{display:none}
+}
+@media(max-width:430px){
+  body.overdrive-ui .admin-ultimax-header{max-width:calc(100vw - 78px)}
+  body.overdrive-ui .admin-ultimax-header strong{font-size:13px}
+  body.overdrive-ui .admin-ultimax-header small{display:none}
+  body.overdrive-ui .chat-head{font-size:10px!important}
+  body.overdrive-ui .message{max-width:96%!important}
+  body.overdrive-ui .message .bubble{font-size:11.5px!important}
+  body.overdrive-ui .composer{left:6px!important;right:6px!important}
 }
