@@ -83,6 +83,12 @@ expose = true
 description = "Supabase project URL for the HAxBRO knowledge warehouse"
 
 [[secret]]
+name = "ADMIN69_PASSWORD"
+required = true
+expose = true
+description = "Private Admin69 password for the HAxBRO owner security console; set this in Hatchable Setup and never put it in frontend code"
+
+[[secret]]
 name = "HAXBRO_INGEST_KEY"
 required = true
 expose = true
