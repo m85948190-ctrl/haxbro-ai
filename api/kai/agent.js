@@ -63,7 +63,8 @@ async function verifyAdminCookie(req){
   const cookieHeader=String(req.headers?.cookie||'');
   const cookieMatch=cookieHeader.match(/(?:^|;\s*)haxbro_admin69=([^;]+)/);
   const headerToken=String(req.headers?.['x-haxbro-admin69']||'').trim();
-  const suppliedToken=headerToken || (cookieMatch ? decodeURIComponent(cookieMatch[1]) : '');
+  const bodyToken=String(req.body?.adminToken||'').trim();
+  const suppliedToken=headerToken || bodyToken || (cookieMatch ? decodeURIComponent(cookieMatch[1]) : '');
   if(!suppliedToken)return false;
   const secret=String(process.env.ADMIN69_PASSWORD||''); if(!secret)return false;
   const parts=suppliedToken.split('.'); if(parts.length!==2)return false;
