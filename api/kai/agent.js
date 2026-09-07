@@ -24,7 +24,9 @@ const TOOL_DEFS=[
 
 async function verifyAdmin(req){
   const cookie=String(req.headers?.cookie||'').match(/(?:^|;\s*)haxbro_admin69=([^;]+)/);
-  const supplied=String(req.headers?.['x-haxbro-admin69']||req.body?.adminToken|| (cookie?decodeURIComponent(cookie[1]):'')).trim();
+  const auth=String(req.headers?.authorization||'').trim();
+  const bearer=/^Bearer\s+(.+)$/i.exec(auth)?.[1]||'';
+  const supplied=String(req.headers?.['x-haxbro-admin69']||req.body?.adminToken||bearer|| (cookie?decodeURIComponent(cookie[1]):'')).trim();
   const secret=String(process.env.ADMIN69_PASSWORD||'');if(!supplied||!secret)return false;
   const parts=supplied.split('.');if(parts.length!==2)return false;const [issuedAt,sig]=parts;const ts=Number(issuedAt);const now=Math.floor(Date.now()/1000);if(!Number.isFinite(ts)||ts>now||now-ts>3600)return false;
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['verify']);
@@ -55,7 +57,7 @@ async function runWithKey(key,objective){
 
 export default async function(req,res){
   if(!(await verifyAdmin(req)))return res.status(401).json({ok:false,error:'Admin Ultimax authentication required.'});
-  const objective=clean(req.body?.objective,12000).trim();if(!objective)return res.status(400).json({ok:false,error:'objective required'});
+  const objective=clean(req.body?.objective||req.body?.message||req.body?.prompt,12000).trim();if(!objective)return res.status(400).json({ok:false,error:'objective required'});
   const attempts=[];
   for(const envName of KEYS){const key=String(process.env[envName]||'');if(!key){attempts.push({provider:envName,status:'missing'});continue}const t=Date.now();try{const result=await runWithKey(key,objective);attempts.push({provider:envName,status:'success',elapsedMs:Date.now()-t});return res.json({ok:true,agent:'KAI',mode:'ADMIN ULTIMAX',text:result.text,tooling:Object.keys(toolFns),steps:result.steps,provider:envName,model:MODEL,attempts,trace:result.trace||[]})}catch(e){attempts.push({provider:envName,status:'failed',elapsedMs:Date.now()-t,error:clean(e?.message||e,900)})}}
   return res.status(502).json({ok:false,agent:'KAI',error:`All OpenRouter KAI keys failed. ${attempts.map(a=>`${a.provider}: ${a.error||a.status}`).join(' | ')}`,tooling:Object.keys(toolFns),attempts});
