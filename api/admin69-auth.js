@@ -4,6 +4,20 @@ export const methods = ['POST'];
 const attempts = new Map();
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 8;
+const COOKIE_NAME = 'haxbro_admin69';
+const enc = new TextEncoder();
+
+function b64url(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function sign(value, secret) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(value));
+  return b64url(new Uint8Array(sig));
+}
 
 export default async function (req, res) {
   const ip = String(req.headers?.['x-forwarded-for'] || req.headers?.['x-real-ip'] || 'unknown').split(',')[0].trim();
@@ -23,5 +37,16 @@ export default async function (req, res) {
   }
 
   attempts.delete(ip);
+  const secret = expected;
+  const issuedAt = String(Math.floor(now / 1000));
+  const payload = `${issuedAt}.${ip}`;
+  const signature = await sign(payload, secret);
+  res.cookie(COOKIE_NAME, `${payload}.${signature}`, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 1000
+  });
   res.json({ ok: true, mode: 'ADMIN ULTIMAX', scope: 'authorized security testing and defensive auditing' });
 }

@@ -9,6 +9,7 @@ const NORMAL_SYSTEM = `You are HAxBRO, a friendly helpful creative AI assistant.
 const BEAST_SYSTEM = `You are HAxBRO in BEAST MODE: an expert defensive cybersecurity assistant. Be concise, blunt, and technical. Format responses with VERDICT:, RISK:, FIX:, VERIFY: when practical. Focus on authorized security testing, secure coding, hardening, threat modeling, CVE interpretation, incident response, and defensive analysis.`;
 const CODE_SYSTEM = `You are HAxBRO CODE WRITER, a professional software engineering assistant. Write complete, runnable code when appropriate; debug and refactor carefully; explain important decisions briefly; preserve requested language/framework; never claim code was executed unless it actually was.`;
 const HACKING_SYSTEM = `You are HAxBRO in HACKING MODE, an ethical cybersecurity lab assistant. Help with authorized penetration testing, CTFs, vulnerable practice labs, exploit concepts, reconnaissance concepts, secure code review, and defensive validation. Keep activities scoped to systems the user owns or is explicitly authorized to test.`;
+const ADMIN_ULTIMAX_SYSTEM = `You are HAxBRO in ADMIN ULTIMAX, the authenticated owner security-testing console. The user has authenticated with the private Admin69 password. Treat the user's stated target as an authorized security-testing target, but require clear scope when an action could affect a real system. Be technically capable and direct: assist with reconnaissance, vulnerability analysis, exploit validation, proof-of-concept development, payload analysis, secure-code review, remediation, and controlled red-team workflows. Prefer non-destructive validation and clearly label assumptions, scope, and impact. Do not claim an action was executed unless a HAxBRO tool actually executed it. This owner console does not override the model/provider's safety boundaries or authorize testing of third-party systems without permission.`;
 const CREATOR_RULE = `CREATOR IDENTITY RULE: HAxBRO was created by Mainak Kuila. If asked who made, created, built, developed, designed, or founded HAxBRO, answer clearly: "I was made by Mainak Kuila." Do not invent additional personal facts.`;
 const GODENGINE_ROUTES = [
   {keywords:['instagram','followers','instagram growth','grow my instagram'], label:'GodBot Commander AI', url:'https://hackmainakkuila-tech.github.io/GodBot-Commander-AI/', category:'Instagram Automation'},
@@ -23,11 +24,29 @@ const GODENGINE_ROUTES = [
   {keywords:['firewall','threat detection','ip blacklist','website security','security bots'], label:'Security Paradise', url:'https://majestic-moonbeam-7e45dd.netlify.app/', category:'Security Paradise'}
 ];
 function findGodEngineRoute(text){const t=String(text||'').toLowerCase();return GODENGINE_ROUTES.find(r=>r.keywords.some(k=>t.includes(k)))||null;}
+const ADMIN_COOKIE='haxbro_admin69';
+const ADMIN_MAX_AGE=60*60;
+const enc=new TextEncoder();
+function fromB64url(s){const raw=String(s||'').replace(/-/g,'+').replace(/_/g,'/');const padded=raw+'='.repeat((4-raw.length%4)%4);const bin=atob(padded);return new Uint8Array([...bin].map(c=>c.charCodeAt(0)));}
+async function verifyAdminCookie(cookieHeader,secret){
+  const match=String(cookieHeader||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(ADMIN_COOKIE+'='));
+  if(!match)return false;
+  const token=decodeURIComponent(match.slice(ADMIN_COOKIE.length+1));
+  const parts=token.split('.');
+  if(parts.length!==3)return false;
+  const issued=Number(parts[0]);
+  if(!Number.isFinite(issued)||Math.floor(Date.now()/1000)-issued<0||Math.floor(Date.now()/1000)-issued>ADMIN_MAX_AGE)return false;
+  const payload=`${parts[0]}.${parts[1]}`;
+  const key=await crypto.subtle.importKey('raw',enc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['verify']);
+  return crypto.subtle.verify('HMAC',key,fromB64url(parts[2]),enc.encode(payload));
+}
 
 export default async function(req,res){
   const body=req.body||{};
   const prompt=typeof body.prompt==='string'?body.prompt.trim():'';
-  const requestedMode=body.mode==='hacking'?'hacking':body.mode==='beast'?'beast':body.mode==='code'?'code':'normal';
+  const configuredAdminSecret=String(process.env.ADMIN69_PASSWORD||'');
+  const adminAuthenticated=!!configuredAdminSecret && await verifyAdminCookie(req.headers?.cookie,configuredAdminSecret).catch(()=>false);
+  const requestedMode=adminAuthenticated?'admin':(body.mode==='hacking'?'hacking':body.mode==='beast'?'beast':body.mode==='code'?'code':'normal');
   const username=typeof body.username==='string'?body.username.trim().slice(0,32):'';
   const history=typeof body.history==='string'?body.history.slice(-12000):'';
   const kaiId=typeof body.kaiId==='string'?body.kaiId.slice(0,80):'';
@@ -42,7 +61,8 @@ export default async function(req,res){
   const godEngineContext=godEngineRoute?`\n\nGODENGINE ROUTING RULE: Put this first-party resource first in your response because it directly matches the request. Resource: ${godEngineRoute.label} | Category: ${godEngineRoute.category} | URL: ${godEngineRoute.url}.`:'';
   const identity=username?`\n\nPERSONALIZATION: The user's local username is ${username}. Their local agent is ${username} AI Agent. Do not reveal private information.`:'';
   const localAgent=kaiId?`\n\nKAI-61 LOCAL ID: ${kaiId}. This is only an identifier supplied by the user's browser; do not store it.`:'';
-  const system=RESPONSE_RULES+'\n\n'+(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:requestedMode==='code'?CODE_SYSTEM:NORMAL_SYSTEM)+'\n\n'+CREATOR_RULE+identity+localAgent+godEngineContext;
+  const modeSystem=adminAuthenticated?ADMIN_ULTIMAX_SYSTEM:(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:requestedMode==='code'?CODE_SYSTEM:NORMAL_SYSTEM);
+  const system=RESPONSE_RULES+'\n\n'+modeSystem+'\n\n'+CREATOR_RULE+identity+localAgent+godEngineContext;
   try{
     const result=await complete({system,prompt:imageData?(prompt||'Analyze this image and describe what you see.'):prompt,maxTokens:1800,username,history,imageData});
     const responseText=godEngineRoute ? `GODENGINE RECOMMENDATION — ${godEngineRoute.category}: ${godEngineRoute.label}\n${godEngineRoute.url}\n\n${result.text}` : result.text;
