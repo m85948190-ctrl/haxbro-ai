@@ -38,8 +38,11 @@ export default async function (req, res) {
 
   attempts.delete(ip);
   const secret = expected;
+  // Do not bind the session token to the request IP: Hatchable's edge/proxy
+  // can legitimately present different forwarding IPs on subsequent calls.
+  // The token is still HMAC-signed with the private ADMIN69_PASSWORD secret.
   const issuedAt = String(Math.floor(now / 1000));
-  const payload = `${issuedAt}.${ip}`;
+  const payload = issuedAt;
   const signature = await sign(payload, secret);
   const token = `${payload}.${signature}`;
   res.cookie(COOKIE_NAME, token, {

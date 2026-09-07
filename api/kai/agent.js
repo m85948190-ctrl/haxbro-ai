@@ -66,11 +66,11 @@ async function verifyAdminCookie(req){
   const suppliedToken=headerToken || (cookieMatch ? decodeURIComponent(cookieMatch[1]) : '');
   if(!suppliedToken)return false;
   const secret=String(process.env.ADMIN69_PASSWORD||''); if(!secret)return false;
-  const parts=suppliedToken.split('.'); if(parts.length!==3)return false;
-  const [issuedAt,ip,sig]=parts; const ts=Number(issuedAt);
+  const parts=suppliedToken.split('.'); if(parts.length!==2)return false;
+  const [issuedAt,sig]=parts; const ts=Number(issuedAt);
   if(!Number.isFinite(ts)||Math.floor(Date.now()/1000)-ts>3600)return false;
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-  const raw=`${issuedAt}.${ip}`; const expected=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(raw)));
+  const raw=issuedAt; const expected=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(raw)));
   const normalized=sig.replace(/-/g,'+').replace(/_/g,'/');
   const bin=atob(normalized+'='.repeat((4-normalized.length%4)%4));
   const got=Uint8Array.from(bin,c=>c.charCodeAt(0));
