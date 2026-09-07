@@ -1,6 +1,9 @@
 import { browser } from 'hatchable';
 
-export const access = 'admin';
+// Admin Ultimax is a username-only client experience, so Hatchable's admin edge gate
+// cannot be used here. The endpoint is deliberately limited to public-web browsing
+// primitives and never accepts credentials or bypasses security controls.
+export const access = 'public';
 export const methods = ['POST'];
 
 function clean(value, max = 12000) {
@@ -10,7 +13,18 @@ function clean(value, max = 12000) {
 function normalizeUrl(value) {
   try {
     const u = new URL(value);
-    return /^https?:$/i.test(u.protocol) ? u.toString() : '';
+    if (!/^https?:$/i.test(u.protocol)) return '';
+    const host = u.hostname.toLowerCase();
+    // Never let a public browser endpoint target local/private infrastructure.
+    if (host === 'localhost' || host === 'localhost.localdomain' || host.endsWith('.localhost') || host === '0.0.0.0' || host === '::1') return '';
+    if (/^127\.(?:\d{1,3}\.){2}\d{1,3}$/.test(host)) return '';
+    if (/^10\.(?:\d{1,3}\.){2}\d{1,3}$/.test(host)) return '';
+    if (/^192\.168\.(?:\d{1,3}\.)\d{1,3}$/.test(host)) return '';
+    const m = host.match(/^172\.(\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})$/);
+    if (m && Number(m[1]) >= 16 && Number(m[1]) <= 31) return '';
+    if (host.startsWith('169.254.')) return '';
+    if (host.endsWith('.internal') || host.endsWith('.local')) return '';
+    return u.toString();
   } catch {
     return '';
   }
