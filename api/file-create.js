@@ -1,4 +1,4 @@
-import { complete } from 'lib/kai';
+import { complete } from 'lib/core';
 import { storage } from 'hatchable';
 
 export const access = 'public';

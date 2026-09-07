@@ -1,4 +1,4 @@
-import { complete } from 'lib/kai';
+import { complete } from 'lib/core';
 
 export const access = 'public';
 export const methods = ['POST'];

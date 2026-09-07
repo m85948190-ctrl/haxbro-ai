@@ -1,4 +1,4 @@
-import { ai, browser } from "hatchable";
+import { browser } from "hatchable";
 
 export const access = "public";
 export const methods = ["POST"];
@@ -7,94 +7,52 @@ const SYSTEM = `You are KAI, the execution agent inside HAxBRO ADMIN ULTIMAX.
 You are an action-oriented agent, not a roleplay chatbot. Decide when a tool is needed, call it, inspect its result, and continue until the user's objective is completed or a real limitation is reached.
 You may research public web pages, browse public URLs, extract page text, and perform non-destructive browser interactions such as clicking and typing into public forms. For security work, keep actions scoped to systems the operator owns or is explicitly authorized to test. Do not bypass authentication, CAPTCHA, access controls, or other security controls. Never claim an action happened unless a tool returned evidence that it happened.
 Return a concise execution report with ACTIONS, RESULTS, and LIMITATIONS when applicable.`;
+const KEYS=['OPENROUTER_API_KEY_1','OPENROUTER_API_KEY_2','OPENROUTER_API_KEY_3'];
+const MODEL='openrouter/auto';
 
-function clean(v, max=12000){ return String(v ?? '').replace(/\u0000/g,'').slice(0,max); }
-function publicUrl(v){
-  try{
-    const u=new URL(String(v||'').trim());
-    if(!/^https?:$/i.test(u.protocol)) return '';
-    const h=u.hostname.toLowerCase();
-    if(h==='localhost'||h.endsWith('.localhost')||h==='0.0.0.0'||h==='::1'||/^127\./.test(h)||/^10\./.test(h)||/^192\.168\./.test(h)||h.endsWith('.local')||h.endsWith('.internal')||h.startsWith('169.254.')) return '';
-    const m=h.match(/^172\.(\d{1,3})\./); if(m&&Number(m[1])>=16&&Number(m[1])<=31)return '';
-    return u.toString();
-  }catch{return '';}
+function clean(v,max=12000){return String(v??'').replace(/\u0000/g,'').slice(0,max)}
+function publicUrl(v){try{const u=new URL(String(v||'').trim());if(!/^https?:$/i.test(u.protocol))return '';const h=u.hostname.toLowerCase();if(h==='localhost'||h.endsWith('.localhost')||h==='0.0.0.0'||h==='::1'||/^127\./.test(h)||/^10\./.test(h)||/^192\.168\./.test(h)||h.endsWith('.local')||h.endsWith('.internal')||h.startsWith('169.254.'))return '';const m=h.match(/^172\.(\d{1,3})\./);if(m&&Number(m[1])>=16&&Number(m[1])<=31)return '';return u.toString()}catch{return ''}}
+
+const toolFns={
+  public_web:async({url})=>{const u=publicUrl(url);if(!u)return{ok:false,error:'Only public http(s) URLs are allowed.'};try{const r=await fetch(u,{method:'GET',redirect:'follow'});const body=await r.text();return{ok:true,status:r.status,url:r.url||u,text:clean(body.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' '),9000)}}catch(e){return{ok:false,error:clean(e?.message||e,1000)}}},
+  browser_visit_click:async({url,clickText})=>{const u=publicUrl(url);if(!u)return{ok:false,error:'Only public http(s) URLs are allowed.'};try{return await browser.session(async page=>{await page.goto(u,{waitUntil:'domcontentloaded'});if(clickText){const clicked=await page.evaluate(wanted=>{const target=String(wanted).trim().toLowerCase();const nodes=Array.from(document.querySelectorAll('button,a,[role="button"],input[type="submit"],input[type="button"]'));const el=nodes.find(n=>((n.innerText||n.textContent||n.value||'').trim().toLowerCase().includes(target)));if(!el)return false;el.click();return true},clickText);if(clicked)await new Promise(r=>setTimeout(r,700));if(!clicked)return{ok:false,url:await page.url(),title:await page.title(),error:`No clickable element matched: ${clickText}`}}const text=await page.$eval('body',el=>(el.innerText||el.textContent||'').trim().slice(0,9000)).catch(()=> '');return{ok:true,url:await page.url(),title:await page.title(),text}})}catch(e){return{ok:false,error:clean(e?.message||e,1200)}}}
+};
+const TOOL_DEFS=[
+ {type:'function',function:{name:'public_web',description:'Fetch a public web URL and return HTTP status and compact text.',parameters:{type:'object',properties:{url:{type:'string'}},required:['url']}}},
+ {type:'function',function:{name:'browser_visit_click',description:'Open a public URL in managed Chromium, optionally click a visible button/link by text, then return URL, title, and page text.',parameters:{type:'object',properties:{url:{type:'string'},clickText:{type:'string'}},required:['url']}}}
+];
+
+async function verifyAdmin(req){
+  const cookie=String(req.headers?.cookie||'').match(/(?:^|;\s*)haxbro_admin69=([^;]+)/);
+  const supplied=String(req.headers?.['x-haxbro-admin69']||req.body?.adminToken|| (cookie?decodeURIComponent(cookie[1]):'')).trim();
+  const secret=String(process.env.ADMIN69_PASSWORD||'');if(!supplied||!secret)return false;
+  const parts=supplied.split('.');if(parts.length!==2)return false;const [issuedAt,sig]=parts;const ts=Number(issuedAt);const now=Math.floor(Date.now()/1000);if(!Number.isFinite(ts)||ts>now||now-ts>3600)return false;
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['verify']);
+  const raw=sig.replace(/-/g,'+').replace(/_/g,'/');const bin=atob(raw+'='.repeat((4-raw.length%4)%4));const got=Uint8Array.from(bin,c=>c.charCodeAt(0));return crypto.subtle.verify('HMAC',key,got,new TextEncoder().encode(issuedAt));
 }
 
-const tools={
-  public_web: {
-    description:'Fetch a public web URL and return its HTTP status and a compact text extraction.',
-    inputSchema:{type:'object',properties:{url:{type:'string'}},required:['url']},
-    execute: async ({url})=>{
-      const u=publicUrl(url); if(!u) return {ok:false,error:'Only public http(s) URLs are allowed.'};
-      try{
-        let r=await fetch(u,{method:'GET',redirect:'follow'});
-        const body=await r.text();
-        return {ok:true,status:r.status,url:r.url||u,text:clean(body.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' '),9000)};
-      }catch(e){return {ok:false,error:clean(e?.message||e,1000)};}
-    }
-  },
-  browser_visit_click: {
-    description:'Open a public URL in managed Chromium, optionally click a visible button/link by text, then return the resulting URL, title, and page text.',
-    inputSchema:{type:'object',properties:{url:{type:'string'},clickText:{type:'string'}},required:['url']},
-    execute: async ({url,clickText})=>{
-      const u=publicUrl(url); if(!u) return {ok:false,error:'Only public http(s) URLs are allowed.'};
-      try{
-        return await browser.session(async page=>{
-          await page.goto(u,{waitUntil:'domcontentloaded'});
-          if(clickText){
-            const clicked=await page.evaluate(wanted=>{
-              const target=String(wanted).trim().toLowerCase();
-              const nodes=Array.from(document.querySelectorAll('button,a,[role="button"],input[type="submit"],input[type="button"]'));
-              const el=nodes.find(n=>((n.innerText||n.textContent||n.value||'').trim().toLowerCase().includes(target)));
-              if(!el)return false; el.click(); return true;
-            },clickText);
-            if(clicked) await new Promise(r=>setTimeout(r,700));
-            if(!clicked) return {ok:false,url:await page.url(),title:await page.title(),error:`No clickable element matched: ${clickText}`};
-          }
-          const text=await page.$eval('body',el=>(el.innerText||el.textContent||'').trim().slice(0,9000)).catch(()=> '');
-          return {ok:true,url:await page.url(),title:await page.title(),text};
-        });
-      }catch(e){return {ok:false,error:clean(e?.message||e,1200)};}
+async function runWithKey(key,objective){
+  const messages=[{role:'system',content:SYSTEM},{role:'user',content:objective}];
+  for(let step=0;step<8;step++){
+    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${key}`},body:JSON.stringify({model:MODEL,messages,tools:TOOL_DEFS,tool_choice:'auto',max_tokens:1800,temperature:0.2})});
+    const raw=await r.text();if(!r.ok)throw new Error(`OpenRouter HTTP ${r.status}: ${clean(raw,900)}`);
+    const data=JSON.parse(raw);const msg=data?.choices?.[0]?.message;if(!msg)throw new Error('OpenRouter returned no assistant message');
+    messages.push(msg);
+    const calls=Array.isArray(msg.tool_calls)?msg.tool_calls:[];
+    if(!calls.length)return{text:clean(msg.content||'Execution completed.'),steps:step+1};
+    for(const call of calls){
+      const name=call?.function?.name;let args={};try{args=JSON.parse(call?.function?.arguments||'{}')}catch{args={}};
+      const fn=toolFns[name];const result=fn?await fn(args):{ok:false,error:`Unknown tool: ${name}`};
+      messages.push({role:'tool',tool_call_id:call.id,name,content:JSON.stringify(result).slice(0,12000)});
     }
   }
-};
-
-async function verifyAdminCookie(req){
-  const cookieHeader=String(req.headers?.cookie||'');
-  const cookieMatch=cookieHeader.match(/(?:^|;\s*)haxbro_admin69=([^;]+)/);
-  const headerToken=String(req.headers?.['x-haxbro-admin69']||'').trim();
-  const bodyToken=String(req.body?.adminToken||'').trim();
-  const suppliedToken=headerToken || bodyToken || (cookieMatch ? decodeURIComponent(cookieMatch[1]) : '');
-  if(!suppliedToken)return false;
-  const secret=String(process.env.ADMIN69_PASSWORD||''); if(!secret)return false;
-  const parts=suppliedToken.split('.'); if(parts.length!==2)return false;
-  const [issuedAt,sig]=parts; const ts=Number(issuedAt);
-  if(!Number.isFinite(ts)||Math.floor(Date.now()/1000)-ts>3600)return false;
-  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-  const raw=issuedAt; const expected=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(raw)));
-  const normalized=sig.replace(/-/g,'+').replace(/_/g,'/');
-  const bin=atob(normalized+'='.repeat((4-normalized.length%4)%4));
-  const got=Uint8Array.from(bin,c=>c.charCodeAt(0));
-  if(got.length!==expected.length)return false; let diff=0; for(let i=0;i<got.length;i++)diff|=got[i]^expected[i]; return diff===0;
+  return{text:'KAI reached the execution step limit before producing a final report.',steps:8};
 }
 
 export default async function(req,res){
-  if(!(await verifyAdminCookie(req)))return res.status(401).json({ok:false,error:'Admin Ultimax authentication required.'});
-  const objective=clean(req.body?.objective,12000).trim();
-  if(!objective)return res.status(400).json({ok:false,error:'objective required'});
-  const requestedTools={};
-  for(const [name,t] of Object.entries(tools)) requestedTools[name]={description:t.description,inputSchema:t.inputSchema};
-  try{
-    const result=await ai.generateText({
-      model:'sonnet',
-      purpose:'HAxBRO KAI execution agent',
-      system:SYSTEM,
-      prompt:objective,
-      tools:Object.fromEntries(Object.entries(tools).map(([name,t])=>[name,{description:t.description,parameters:t.inputSchema,execute:t.execute}])),
-      maxSteps:8
-    });
-    res.json({ok:true,agent:'KAI',mode:'ADMIN ULTIMAX',text:clean(result.text||result),tooling:Object.keys(requestedTools),steps:result.steps?.length||null});
-  }catch(e){
-    res.status(502).json({ok:false,agent:'KAI',error:clean(e?.message||e,1600),tooling:Object.keys(requestedTools)});
-  }
+  if(!(await verifyAdmin(req)))return res.status(401).json({ok:false,error:'Admin Ultimax authentication required.'});
+  const objective=clean(req.body?.objective,12000).trim();if(!objective)return res.status(400).json({ok:false,error:'objective required'});
+  const attempts=[];
+  for(const envName of KEYS){const key=String(process.env[envName]||'');if(!key){attempts.push({provider:envName,status:'missing'});continue}const t=Date.now();try{const result=await runWithKey(key,objective);attempts.push({provider:envName,status:'success',elapsedMs:Date.now()-t});return res.json({ok:true,agent:'KAI',mode:'ADMIN ULTIMAX',text:result.text,tooling:Object.keys(toolFns),steps:result.steps,provider:envName,model:MODEL,attempts})}catch(e){attempts.push({provider:envName,status:'failed',elapsedMs:Date.now()-t,error:clean(e?.message||e,900)})}}
+  return res.status(502).json({ok:false,agent:'KAI',error:`All OpenRouter KAI keys failed. ${attempts.map(a=>`${a.provider}: ${a.error||a.status}`).join(' | ')}`,tooling:Object.keys(toolFns),attempts});
 }
