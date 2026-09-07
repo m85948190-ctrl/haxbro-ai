@@ -52,7 +52,17 @@ async function runWithKey(key,objective){
       messages.push({role:'tool',tool_call_id:call.id,name,content:JSON.stringify(result).slice(0,12000)});
     }
   }
-  return{text:'KAI reached the execution step limit before producing a final report.',steps:8,trace};
+  // If the model keeps selecting tools until the execution budget is exhausted,
+  // force one final synthesis turn with tools disabled. The user should never see
+  // the internal step-limit message when we already have usable tool results.
+  try {
+    const finalMessages = messages.concat([{role:'user',content:'Now stop using tools and produce the final execution report from the evidence collected above. Be concise. Include ACTIONS, RESULTS, and LIMITATIONS if relevant.'}]);
+    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${key}`},body:JSON.stringify({model:MODEL,messages:finalMessages,tool_choice:'none',max_tokens:1800,temperature:0.2})});
+    const raw=await r.text();if(!r.ok)throw new Error(`OpenRouter HTTP ${r.status}: ${clean(raw,900)}`);
+    const data=JSON.parse(raw);const text=data?.choices?.[0]?.message?.content;
+    if(text)return{text:clean(text),steps:8,trace};
+  }catch(e){trace.push({type:'final_synthesis_error',error:clean(e?.message||e,900),at:Date.now()})}
+  return{text:'KAI completed the available execution steps. See the recorded actions/results above.',steps:8,trace};
 }
 
 export default async function(req,res){
