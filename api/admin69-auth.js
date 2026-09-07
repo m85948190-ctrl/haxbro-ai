@@ -41,12 +41,15 @@ export default async function (req, res) {
   const issuedAt = String(Math.floor(now / 1000));
   const payload = `${issuedAt}.${ip}`;
   const signature = await sign(payload, secret);
-  res.cookie(COOKIE_NAME, `${payload}.${signature}`, {
+  const token = `${payload}.${signature}`;
+  res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 1000
   });
-  res.json({ ok: true, mode: 'ADMIN ULTIMAX', scope: 'authorized security testing and defensive auditing' });
+  // Return the same short-lived signed session token as a fallback for browsers
+  // that do not persist the custom cookie reliably. The token is not the password.
+  res.json({ ok: true, mode: 'ADMIN ULTIMAX', scope: 'authorized security testing and defensive auditing', token });
 }
