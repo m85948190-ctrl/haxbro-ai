@@ -28,7 +28,7 @@ function wire(){
   bind('#adminPasswordSubmit','click',submitAdmin69Password);bind('#adminPasswordCancel','click',cancelAdmin69Password);
   bind('#adminPasswordInput','keydown',e=>{if(e.key==='Enter'){e.preventDefault();submitAdmin69Password()}if(e.key==='Escape')cancelAdmin69Password()});
   document.querySelectorAll('.mode-btn').forEach(b=>b.addEventListener('click',()=>{if(!overdrive)setMode(b.dataset.mode)}));
-  bind('#newChatBtn','click',e=>{e?.preventDefault?.();newChat()});bind('#clearBtn','click',e=>{e?.preventDefault?.();newChat()});bind('#mobileNewChatBtn','click',e=>{e?.preventDefault?.();newChat()});
+  bind('#newChatBtn','click',e=>{e?.preventDefault?.();newChat()});bind('#clearBtn','click',e=>{e?.preventDefault?.();newChat()});bind('#mobileNewChatBtn','click',e=>{e?.preventDefault?.();newChat()});bind('#menuBtn','click',e=>{e?.preventDefault?.();const d=$('#mobileDrawer');if(d){d.hidden=false;d.setAttribute('aria-hidden','false');document.body.classList.add('drawer-open')}});bind('#closeMenuBtn','click',e=>{e?.preventDefault?.();const d=$('#mobileDrawer');if(d){d.hidden=true;d.setAttribute('aria-hidden','true');document.body.classList.remove('drawer-open')}});
   bind('#adminExitBtn','click',()=>{setOverdrive(false);sessionStorage.removeItem('haxbro_admin69_token')});bind('#mobileAdminExitBtn','click',()=>{setOverdrive(false);sessionStorage.removeItem('haxbro_admin69_token')});
   bind('#studyBtn','click',()=>{study=!study;localStorage.setItem('haxbro_study',study?'true':'false');$('#studyBadge').hidden=!study});bind('#mobileStudyBtn','click',()=>{$('#studyBtn')?.click()});
   bind('#themeBtn','click',()=>document.body.classList.toggle('dark'));bind('#mobileThemeBtn','click',()=>{$('#themeBtn')?.click()});
