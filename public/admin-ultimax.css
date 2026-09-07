@@ -1,0 +1,47 @@
+/* HAxBRO Admin Ultimax surface: owner-only visual state. */
+.admin-ultimax-header{display:none}
+@keyframes adminRedSweep{0%{opacity:1;transform:translateX(-100%)}45%{opacity:.95}100%{opacity:0;transform:translateX(100%)}}
+@keyframes adminTitleIn{0%{opacity:0;transform:translateY(10px) scale(.96);filter:blur(8px)}60%{opacity:1;filter:blur(0)}100%{opacity:1;transform:none}}
+@keyframes adminPulse{0%,100%{opacity:.68;text-shadow:0 0 8px #ff3348}50%{opacity:1;text-shadow:0 0 24px #ff3348,0 0 50px #ef233c88}}
+body.overdrive-ui:before{content:'';position:fixed;inset:0;z-index:2147483001;pointer-events:none;background:linear-gradient(100deg,transparent 0,#ef233c33 42%,#ff334866 50%,#ef233c33 58%,transparent 100%);animation:adminRedSweep .72s cubic-bezier(.2,.8,.2,1) both}
+body.overdrive-ui .topbar{position:relative}
+body.overdrive-ui .topbar:after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 0,#ef233c18,transparent 55%)}
+body.overdrive-ui .top-center,body.overdrive-ui .brand,body.overdrive-ui .top-actions{display:none!important}
+body.overdrive-ui .admin-ultimax-header{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;z-index:2;pointer-events:none;animation:adminTitleIn .7s ease .18s both}
+body.overdrive-ui .admin-ultimax-header strong{font:900 clamp(19px,3vw,28px)/1 Manrope,sans-serif;letter-spacing:.16em;color:#fff;text-shadow:0 0 14px #ef233c,0 0 34px #ef233c88}
+body.overdrive-ui .admin-ultimax-header small{font:800 7px ui-monospace,monospace;letter-spacing:.22em;color:#ff7b87;animation:adminPulse 1.8s ease-in-out infinite}
+body.overdrive-ui .admin-ultimax-kicker{font:800 6px ui-monospace,monospace;letter-spacing:.28em;color:#b55a64}
+body.overdrive-ui .admin-ultimax-glow{position:absolute;width:190px;height:50px;border-radius:50%;background:#ef233c2b;filter:blur(22px)}
+body.overdrive-ui .sidebar .side-title,body.overdrive-ui .sidebar .normal-admin-hidden,body.overdrive-ui .sidebar section:not(#adminTools),body.overdrive-ui .sidebar .history,body.overdrive-ui .sidebar .customer-profile,body.overdrive-ui .sidebar .credit{display:none!important}
+body.overdrive-ui .sidebar{padding:14px 10px}
+body.overdrive-ui .sidebar #adminTools{display:block!important;border:0;padding:0;margin:0}
+body.overdrive-ui #adminTools .section-label{padding:7px 5px 9px;color:#ff6473;font-size:8px;text-align:center}
+body.overdrive-ui #adminTools #adminAboutBtn,body.overdrive-ui #adminTools #adminCapabilitiesBtn{display:none!important}
+body.overdrive-ui .chat-panel{height:calc(100vh - 64px)}
+body.overdrive-ui .chat-head{justify-content:center}
+body.overdrive-ui .chat-head>div:first-child{display:flex}
+body.overdrive-ui .chat-head>div:first-child .terminal{font-size:0}
+body.overdrive-ui .chat-head>div:first-child .terminal:after{content:'KAI SYSTEM';font:800 9px ui-monospace,monospace;letter-spacing:.2em;color:#ff5b6b}
+body.overdrive-ui #headMode{display:none}
+body.overdrive-ui #modeHint{font-size:7px;color:#a34b56;letter-spacing:.15em}
+body.overdrive-ui .mode-card{display:none!important}
+body.overdrive-ui .messages{background:radial-gradient(circle at 50% 0,#ef233c12,transparent 38%),#050203}
+body.overdrive-ui .hero-welcome{margin-top:12vh}
+body.overdrive-ui .hero-welcome .hero-logo-image,body.overdrive-ui .hero-welcome .hero-kicker,body.overdrive-ui .hero-welcome p,body.overdrive-ui .hero-welcome .hero-chips,body.overdrive-ui .hero-welcome .hero-capabilities{display:none}
+body.overdrive-ui .hero-welcome h1{font-size:0;letter-spacing:.08em;text-transform:uppercase;margin:0;color:#fff;animation:adminTitleIn .8s ease .25s both}
+body.overdrive-ui .hero-welcome h1:before{content:'ADMIN ULTIMAX';display:block;font:900 clamp(34px,6vw,66px)/1 Manrope,sans-serif;letter-spacing:.08em;color:#fff;text-shadow:0 0 14px #ef233c,0 0 34px #ef233c66}
+body.overdrive-ui .hero-welcome h1 span{display:none}
+body.overdrive-ui .hero-welcome h1:after{content:'KAI SYSTEM · 12 NODES';display:block;margin-top:12px;font:800 8px ui-monospace,monospace;letter-spacing:.3em;color:#a64d57}
+body.overdrive-ui .admin-tools .kai-network-grid{grid-template-columns:1fr 1fr;gap:5px}
+body.overdrive-ui .kai-node{transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+body.overdrive-ui .kai-node:hover{transform:translateY(-1px);border-color:#ef233caa;box-shadow:0 0 18px #ef233c1c}
+body.overdrive-ui .composer:after{content:'KAI SYSTEM · ADMIN ULTIMAX';bottom:-18px;color:#ff5968}
+body.overdrive-ui .mobile-menu{background:#160307;border-color:#6b1621;color:#ff5c6c;box-shadow:0 0 18px #ef233c22}
+body.overdrive-ui .mobile-drawer{background:#080204;border-right-color:#4f111a}
+body.overdrive-ui .mobile-drawer-content>.mode-card,body.overdrive-ui .mobile-drawer-content>section:not(#mobileAdminTools){display:none!important}
+body.overdrive-ui .mobile-drawer-head{justify-content:center;border-color:#3b0b12}
+body.overdrive-ui .mobile-drawer-head b{display:none}
+body.overdrive-ui .mobile-drawer-head:after{content:'KAI SYSTEM';font:900 12px ui-monospace,monospace;letter-spacing:.2em;color:#ff5667}
+body.overdrive-ui #mobileAdminTools{display:block!important;border:0}
+body.overdrive-ui #mobileAdminTools #mobileAdminAboutBtn,body.overdrive-ui #mobileAdminTools #mobileAdminCapabilitiesBtn{display:none!important}
+@media(max-width:700px){body.overdrive-ui .chat-panel{height:calc(100dvh - 54px)}body.overdrive-ui .chat-head{height:46px}body.overdrive-ui .messages{height:calc(100% - 46px)}body.overdrive-ui .admin-ultimax-header strong{font-size:17px;letter-spacing:.12em}body.overdrive-ui .admin-ultimax-header small{font-size:6px}body.overdrive-ui .hero-welcome{margin-top:10vh}body.overdrive-ui .hero-welcome h1{font-size:30px}body.overdrive-ui .hero-welcome h1:after{font-size:7px}body.overdrive-ui .kai-network-grid{grid-template-columns:1fr 1fr}}
