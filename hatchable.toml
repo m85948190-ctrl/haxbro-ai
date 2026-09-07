@@ -1,7 +1,25 @@
 [ai]
 required = true
 providers = ["openai", "google"]
-description = "HAxBRO Kai free-first multi-provider failover: OpenAI, Google Gemini, Groq, Mistral, OpenRouter, and Hugging Face"
+description = "HAxBRO core AI provider configuration; KAI uses its own OpenRouter key failover chain"
+
+[[secret]]
+name = "OPENROUTER_API_KEY_1"
+required = true
+expose = true
+description = "Primary OpenRouter key for HAxBRO KAI"
+
+[[secret]]
+name = "OPENROUTER_API_KEY_2"
+required = true
+expose = true
+description = "Secondary OpenRouter key for HAxBRO KAI failover"
+
+[[secret]]
+name = "OPENROUTER_API_KEY_3"
+required = true
+expose = true
+description = "Tertiary OpenRouter key for HAxBRO KAI failover"
 
 [auth]
 enabled = false
@@ -38,7 +56,7 @@ description = "Optional Mistral API key for Kai fallback"
 name = "OPENROUTER_API_KEY"
 required = false
 expose = true
-description = "Optional OpenRouter API key for Kai free-model fallback"
+description = "Legacy OpenRouter key for the core provider chain; KAI uses OPENROUTER_API_KEY_1..3"
 
 [[secret]]
 name = "HF_TOKEN"
