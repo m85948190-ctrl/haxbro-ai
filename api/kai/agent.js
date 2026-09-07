@@ -59,7 +59,22 @@ const tools={
   }
 };
 
+async function verifyAdminCookie(req){
+  const header=String(req.headers?.cookie||'');
+  const match=header.match(/(?:^|;\s*)haxbro_admin69=([^;]+)/);
+  if(!match)return false;
+  const secret=String(process.env.ADMIN69_PASSWORD||''); if(!secret)return false;
+  const parts=decodeURIComponent(match[1]).split('.'); if(parts.length!==3)return false;
+  const [issuedAt,ip,sig]=parts; const ts=Number(issuedAt);
+  if(!Number.isFinite(ts)||Math.floor(Date.now()/1000)-ts>3600)return false;
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const raw=`${issuedAt}.${ip}`; const expected=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(raw)));
+  const bin=atob(sig.replace(/-/g,'+').replace(/_/g,'/')+'=='.slice((sig.length+3)%4)); const got=Uint8Array.from(bin,c=>c.charCodeAt(0));
+  if(got.length!==expected.length)return false; let diff=0; for(let i=0;i<got.length;i++)diff|=got[i]^expected[i]; return diff===0;
+}
+
 export default async function(req,res){
+  if(!(await verifyAdminCookie(req)))return res.status(401).json({ok:false,error:'Admin Ultimax authentication required.'});
   const objective=clean(req.body?.objective,12000).trim();
   if(!objective)return res.status(400).json({ok:false,error:'objective required'});
   const requestedTools={};
