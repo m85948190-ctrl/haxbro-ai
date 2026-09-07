@@ -21,6 +21,8 @@ async function weatherContext(city='Kolkata'){
 
 function fallback(prompt,ctx){
   const type=appType(prompt);
+  // KAI 2.0 quality gate: app requests must produce a designed product, never a raw text/math dump.
+  const designBrief = {productIntent:'working application',ux:'clear hierarchy, obvious primary action, responsive mobile-first layout',visual:'premium product UI with intentional spacing, typography, states and feedback',quality:'complete interaction loop, empty/loading/error/success states where relevant'};
   if(type==='calculator') return {name:'HAxBRO Calculator',summary:'A real four-function calculator with a polished keypad, expression display, clear/backspace, keyboard input, and responsive layout.',files:[
     {path:'index.html',content:`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>HAxBRO Calculator</title><link rel="stylesheet" href="style.css"></head><body><main class="calc"><div class="top"><span>HAxBRO</span><small>CALCULATOR</small></div><div class="display"><div id="expression"></div><strong id="value">0</strong></div><div class="keys"><button class="utility" data-action="clear">AC</button><button class="utility" data-action="back">⌫</button><button class="operator" data-key="%">%</button><button class="operator" data-key="/">÷</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button class="operator" data-key="*">×</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button class="operator" data-key="-">−</button><button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button class="operator" data-key="+">+</button><button class="zero" data-key="0">0</button><button data-key=".">.</button><button class="equals" data-action="equals">=</button></div></main><script src="app.js"></script></body></html>`},
     {path:'style.css',content:`*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 50% 10%,#17385c,#060d16 62%);color:#f5fbff;font-family:Inter,system-ui,sans-serif}.calc{width:min(390px,92vw);padding:18px;border:1px solid #294d6c;border-radius:28px;background:linear-gradient(160deg,#112a42,#091827);box-shadow:0 30px 90px #0009}.top{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 14px}.top span{font-weight:800;letter-spacing:.12em;color:#42c7ff}.top small{font-size:9px;color:#7795ae;letter-spacing:.16em}.display{height:130px;padding:18px;border-radius:19px;background:#06111d;border:1px solid #203b53;display:flex;flex-direction:column;justify-content:end;text-align:right;overflow:hidden}.display #expression{height:25px;color:#66849e;font-size:13px;white-space:nowrap;overflow:hidden}.display strong{font-size:45px;line-height:1.1;font-weight:500;overflow:hidden;text-overflow:ellipsis}.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.keys button{height:62px;border:1px solid #29445b;border-radius:16px;background:#142d44;color:#edf8ff;font-size:20px;font-weight:600;cursor:pointer;transition:.15s}.keys button:hover{background:#1b4667;transform:translateY(-1px)}.keys .utility{background:#1a3b53;color:#73d6ff}.keys .operator{background:#173d5b;color:#50caff}.keys .equals{background:linear-gradient(135deg,#315cff,#159bd8);border-color:transparent;box-shadow:0 10px 25px #159bd833}.keys .zero{grid-column:span 2}@media(max-width:420px){.calc{padding:14px;border-radius:22px}.keys{gap:7px}.keys button{height:56px;border-radius:13px}.display{height:115px}}`},
@@ -53,7 +55,37 @@ export default async function(req,res){
    return res.json(built);
  }
  try{
-  const result=await complete({username:username,maxTokens:4200,system:`You are KAI 2.0, the HAxBRO App Builder. You are the actual builder, not a spec writer. The user's request must become a working web application. First understand the product and its normal UX, then write the complete files. NEVER return a plain text page for an app request unless the requested product itself is a text document. For games, create a genuinely playable game with controls, game state, scoring and restart. For AI apps, create a real chat-style workspace. For calculators, create a real keypad and calculation logic. For dashboards, create cards, navigation, charts/tables and working filters. For weather, create search/location, current conditions and forecast. For editors, create editing controls and a working surface. For commerce, create products, cart and checkout-like interactions. Use polished responsive UI, realistic states, and useful interactions. Return ONLY valid JSON: {"name":"...","summary":"...","files":[{"path":"index.html","content":"..."},{"path":"style.css","content":"..."},{"path":"app.js","content":"..."}]}. Keep the app self-contained and client-side unless the request truly requires a backend. Do not return a plan, markdown fences, or prose outside JSON. You are KAI; the App Maker UI should be able to say that KAI understood and built the app.`,prompt:`USER REQUEST:\n${prompt}\n\nRESEARCH CONTEXT:\n${JSON.stringify(ctx||{})}`,history:''});
+  const result=await complete({username:username,maxTokens:4200,system:`You are KAI 2.0, the HAxBRO App Builder — a product designer + senior frontend engineer + interaction designer. You are the actual builder, NOT a spec writer.
+
+KAI 2.0 MUST THINK ABOUT THE PRODUCT BEFORE WRITING CODE:
+1) Understand what the user is trying to accomplish and who will use it.
+2) Choose the best UX flow and information hierarchy.
+3) Design the screens, components, controls, visual hierarchy, spacing, typography, responsive behavior and interaction states.
+4) Decide what should feel premium, obvious and delightful.
+5) Then implement the complete working application and mentally test the main flows.
+
+NEVER reduce an app request to a text explanation, a list of numbers, ASCII UI, a toy mockup, or a generic starter. The result must look like a deliberately designed real product.
+
+QUALITY BAR:
+- polished, modern, cohesive visual system
+- responsive desktop + mobile layout
+- strong empty/loading/error/success states when relevant
+- real controls and working interactions, not decorative buttons
+- sensible accessibility, focus states and keyboard support
+- realistic sample data when useful
+- no unexplained placeholder blocks
+- use CSS for a rich interface; do not make the UI depend on external assets unless necessary
+
+APP-SPECIFIC RULES:
+- CALCULATOR: build a premium, genuinely usable calculator UI — not a row of digits/operators. Include a large readable display, expression/history area, grouped keypad, clear/backspace, decimal, percentage, operators, equals, keyboard support and robust calculation/error handling. Add useful scientific functions when the request is broad enough. Make the visual design feel like a polished standalone calculator product.
+- GAMES: genuinely playable with controls, game state, scoring, restart and feedback.
+- AI APPS: real chat/workspace experience with input, messages, states and useful controls.
+- DASHBOARDS: cards, navigation, charts/tables and working filters.
+- WEATHER: search/location, current conditions and forecast.
+- EDITORS: real editing controls and a working editing surface.
+- COMMERCE: products, cart and checkout-like interactions.
+
+Return ONLY valid JSON: {"name":"...","summary":"...","files":[{"path":"index.html","content":"..."},{"path":"style.css","content":"..."},{"path":"app.js","content":"..."}]}. Keep it self-contained and client-side unless the request truly requires a backend. Do not return a plan, markdown fences, or prose outside JSON. KAI should build the product, not explain how the user could build it.`,prompt:`USER REQUEST:\n${prompt}\n\nRESEARCH CONTEXT:\n${JSON.stringify(ctx||{})}`,history:''});
   let parsed; try{
     const raw=String(result.text||'').trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
     parsed=JSON.parse(raw);
