@@ -51,4 +51,55 @@ body.overdrive-ui.ultimax-open .sidebar{display:block!important}
 .admin-password-actions button{flex:1;height:42px;border:1px solid #52141e;border-radius:10px;background:#120306;color:#a85d67;font:900 8px ui-monospace,monospace;letter-spacing:.08em;cursor:pointer}
 .admin-password-actions button:last-child{border-color:#ef233c66;background:linear-gradient(135deg,#8f0c1e,#ef233c);color:#fff}
 
-@media(max-width:800px){.ultimax-mode{background:#050102}.ultimax-shell{width:100vw;border-left:0}.ultimax-head{min-height:76px;padding:14px 16px}.ultimax-head h1{font-size:21px}.ultimax-messages{padding:20px 14px 145px}.ultimax-composer{left:10px;right:10px;bottom:38px}.ultimax-composer button{padding:0 12px}.ultimax-hint{display:none}}
+/* FULL ADMIN ULTIMAX SHELL — same familiar HAxBRO layout, but the entire workspace becomes red. */
+body.overdrive-ui{--admin-red:#ff263f;--admin-red-soft:#ff6677;--admin-bg:#070103;--admin-panel:#100206;background:#070103!important;color:#ffe9ec!important}
+body.overdrive-ui .ambient{opacity:.18;filter:hue-rotate(315deg) saturate(1.8)}
+body.overdrive-ui .topbar{background:linear-gradient(180deg,#120206,#080103)!important;border-bottom:1px solid #ff263f44!important;box-shadow:0 8px 35px #ff263f12}
+body.overdrive-ui .top-center,body.overdrive-ui .brand,body.overdrive-ui .status,body.overdrive-ui .top-username{display:none!important}
+body.overdrive-ui .top-actions{margin-left:auto}
+body.overdrive-ui .top-actions .top-toggle{border-color:#6f1522!important;background:#120206!important;color:#ff9aa5!important}
+body.overdrive-ui .admin-ultimax-header{display:flex!important;visibility:visible!important;position:absolute;left:50%;transform:translateX(-50%);top:0;height:100%;align-items:center;justify-content:center;flex-direction:column;line-height:1.1;text-align:center;pointer-events:none}
+body.overdrive-ui .admin-ultimax-header .admin-ultimax-kicker{color:#ff5264!important;font:900 8px ui-monospace,monospace;letter-spacing:.2em}
+body.overdrive-ui .admin-ultimax-header strong{color:#fff!important;font:900 22px/1.05 Manrope,system-ui,sans-serif;letter-spacing:.12em}
+body.overdrive-ui .admin-ultimax-header small{color:#a95864!important;font:800 7px ui-monospace,monospace;letter-spacing:.14em;margin-top:4px}
+body.overdrive-ui .sidebar{background:linear-gradient(180deg,#0b0204,#070103)!important;border-right:1px solid #ff263f33!important}
+body.overdrive-ui .sidebar .side-title{visibility:hidden;height:0;min-height:0;padding:0;margin:0;overflow:hidden}
+body.overdrive-ui .sidebar .ai-tools:not(.admin-tools),body.overdrive-ui .sidebar .credit{display:none!important}
+body.overdrive-ui .mode-card,body.overdrive-ui .history,body.overdrive-ui .customer-profile{border-color:#641521!important;background:#0d0205!important;box-shadow:0 0 28px #ff263f08}
+body.overdrive-ui .section-label,body.overdrive-ui .history-head,body.overdrive-ui .history-item{color:#ff8d99!important}
+body.overdrive-ui .mode-name,body.overdrive-ui .mode-desc,body.overdrive-ui .history-item{color:#ffd9dd!important}
+body.overdrive-ui .mode-btn{border-color:#641521!important;background:#100206!important;color:#ff8d99!important}
+body.overdrive-ui .mode-btn.active{background:linear-gradient(135deg,#8d0c20,#ef233c)!important;border-color:#ff5264!important;color:#fff!important;box-shadow:0 0 18px #ff263f2b}
+body.overdrive-ui .chat-panel{background:linear-gradient(180deg,#080103,#050102)!important}
+body.overdrive-ui .chat-head{background:#0a0204!important;border-color:#ff263f2e!important}
+body.overdrive-ui .workspace-dot{background:#ff263f!important;box-shadow:0 0 12px #ff263f!important}
+body.overdrive-ui .terminal,body.overdrive-ui .eyebrow{color:#ff6677!important}
+body.overdrive-ui .hero-welcome{display:none!important}
+body.overdrive-ui .composer{border-color:#681522!important;background:#0d0205!important;box-shadow:0 14px 45px #000,0 0 28px #ff263f0d}
+body.overdrive-ui .composer .input-wrap{border-color:#641521!important;background:#090104!important}
+body.overdrive-ui .composer textarea{color:#ffe8eb!important}
+body.overdrive-ui .composer textarea::placeholder{color:#7f4650!important}
+body.overdrive-ui .send{background:linear-gradient(135deg,#8d0c20,#ff263f)!important;color:#fff!important}
+body.overdrive-ui .message .bubble{border-color:#5b111b!important;background:#100205!important;color:#ffdfe3!important}
+body.overdrive-ui .message.user-msg .bubble{background:#190408!important;border-color:#76202d!important}
+body.overdrive-ui .message .meta{color:#b35b67!important}
+body.overdrive-ui .admin-kai-avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#7d0b1c,#ff263f);color:#fff;font:900 13px ui-monospace,monospace;box-shadow:0 0 18px #ff263f2b;border:1px solid #ff667744}
+body.overdrive-ui #adminTools{display:block!important;border-color:#ff263f44!important}
+body.overdrive-ui #adminTools .kai-network-grid{border-color:#ff263f22!important}
+body.overdrive-ui #adminTools .kai-node{border-color:#5f1520!important;background:#100205!important;color:#ffdce0!important}
+body.overdrive-ui #adminTools .kai-node:hover{border-color:#ff263f!important;box-shadow:0 0 18px #ff263f18}
+body.overdrive-ui #adminTools .kai-node span{color:#ff5264!important}
+body.overdrive-ui #ultimaxMode{display:none!important}
+body.overdrive-ui .admin-password-gate{background:rgba(4,0,2,.88)!important}
+body.overdrive-ui .kai-panel:not(#ultimaxMode),body.overdrive-ui #codeLab,body.overdrive-ui #appMakerPanel,body.overdrive-ui #mediaConverterPanel{filter:none}
+
+@media(max-width:800px){
+  body.overdrive-ui .admin-ultimax-header{position:static;transform:none;margin:auto}
+  body.overdrive-ui .admin-ultimax-header strong{font-size:17px}
+  body.overdrive-ui .top-actions{display:none}
+  body.overdrive-ui .mobile-drawer .mode-card{border-color:#641521!important}
+  body.overdrive-ui .mobile-drawer section:not(.history):not(.mobile-settings){display:none!important}
+  body.overdrive-ui .mobile-drawer #mobileAdminTools{display:block!important}
+  body.overdrive-ui .mobile-drawer .mobile-drawer-head{background:#0d0205!important;border-color:#ff263f33!important;color:#ff6677!important}
+  .ultimax-mode{background:#050102}.ultimax-shell{width:100vw;border-left:0}.ultimax-head{min-height:76px;padding:14px 16px}.ultimax-head h1{font-size:21px}.ultimax-messages{padding:20px 14px 145px}.ultimax-composer{left:10px;right:10px;bottom:38px}.ultimax-composer button{padding:0 12px}.ultimax-hint{display:none}
+}
