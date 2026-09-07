@@ -31,7 +31,9 @@ export default async function(req,res){
   const username=typeof body.username==='string'?body.username.trim().slice(0,32):'';
   const history=typeof body.history==='string'?body.history.slice(-12000):'';
   const kaiId=typeof body.kaiId==='string'?body.kaiId.slice(0,80):'';
-  if(!prompt||prompt.length>12000)return res.status(400).json({error:'prompt required (max 12000 characters).'});
+  const imageData=typeof body.imageData==='string'&&/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(body.imageData)?body.imageData.slice(0,4200000):'';
+  if(!prompt&&!imageData)return res.status(400).json({error:'prompt or image required.'});
+  if(prompt.length>12000)return res.status(400).json({error:'prompt required (max 12000 characters).'});
   const mainakPattern=/\b(who\s+is\s+mainak(?:\s+kuila)?|how\s+is\s+mainak(?:\s+kuila)?|tell\s+me\s+about\s+mainak(?:\s+kuila)?)\b/i;
   if(mainakPattern.test(prompt)) return res.json({response:withChatEmoji('Mainak Kuila is a very good person, a cybersecurity-focused developer and hacker, and the developer who built me, HAxBRO.'),mode:requestedMode,finishReason:'rule'});
   if(/who\s+(made|created|built|developed|designed)\s+(you|haxbro)|your\s+(creator|maker)/i.test(prompt)) return res.json({response:withChatEmoji('I was made by Mainak Kuila.'),mode:requestedMode,finishReason:'rule'});
@@ -42,7 +44,7 @@ export default async function(req,res){
   const localAgent=kaiId?`\n\nKAI-61 LOCAL ID: ${kaiId}. This is only an identifier supplied by the user's browser; do not store it.`:'';
   const system=RESPONSE_RULES+'\n\n'+(requestedMode==='hacking'?HACKING_SYSTEM:requestedMode==='beast'?BEAST_SYSTEM:requestedMode==='code'?CODE_SYSTEM:NORMAL_SYSTEM)+'\n\n'+CREATOR_RULE+identity+localAgent+godEngineContext;
   try{
-    const result=await complete({system,prompt,maxTokens:1800,username,history});
+    const result=await complete({system,prompt:imageData?(prompt||'Analyze this image and describe what you see.'):prompt,maxTokens:1800,username,history,imageData});
     const responseText=godEngineRoute ? `GODENGINE RECOMMENDATION — ${godEngineRoute.category}: ${godEngineRoute.label}\n${godEngineRoute.url}\n\n${result.text}` : result.text;
     return res.json({response:withChatEmoji(responseText),mode:requestedMode,provider:result.provider,model:result.model,responseMs:result.elapsedMs,status:result.status,failoverAttempts:result.attempts||[],knowledgeSource:result.status==='final-fallback'?'KAI-51 web research':'provider-api',kaiAgent:result.agent,kaiId:kaiId||null,webSteps:result.steps||[],godEngineResource:godEngineRoute?.label||null});
   }catch(err){
@@ -50,7 +52,7 @@ export default async function(req,res){
     // One immediate recovery attempt: the agent should recover from transient model/tool
     // failures instead of presenting itself as unavailable.
     try {
-      const retry=await complete({system, prompt, maxTokens:1800, username, history});
+      const retry=await complete({system,prompt:imageData?(prompt||'Analyze this image and describe what you see.'):prompt,maxTokens:1800,username,history,imageData});
       return res.json({response:withChatEmoji(retry.text),mode:requestedMode,provider:retry.provider,model:retry.model,responseMs:retry.elapsedMs,status:retry.status,failoverAttempts:retry.attempts||[],knowledgeSource:retry.status==='final-fallback'?'KAI-51 web research':'provider-api',kaiAgent:retry.agent,kaiId:kaiId||null,webSteps:retry.steps||[],godEngineResource:godEngineRoute?.label||null});
     }catch(retryErr){
       console.error('KAI-61 recovery error',retryErr);
