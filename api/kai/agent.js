@@ -33,26 +33,30 @@ async function verifyAdmin(req){
 
 async function runWithKey(key,objective){
   const messages=[{role:'system',content:SYSTEM},{role:'user',content:objective}];
+  const trace=[];
   for(let step=0;step<8;step++){
     const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${key}`},body:JSON.stringify({model:MODEL,messages,tools:TOOL_DEFS,tool_choice:'auto',max_tokens:1800,temperature:0.2})});
     const raw=await r.text();if(!r.ok)throw new Error(`OpenRouter HTTP ${r.status}: ${clean(raw,900)}`);
     const data=JSON.parse(raw);const msg=data?.choices?.[0]?.message;if(!msg)throw new Error('OpenRouter returned no assistant message');
     messages.push(msg);
     const calls=Array.isArray(msg.tool_calls)?msg.tool_calls:[];
-    if(!calls.length)return{text:clean(msg.content||'Execution completed.'),steps:step+1};
+    if(!calls.length)return{text:clean(msg.content||'Execution completed.'),steps:step+1,trace};
     for(const call of calls){
       const name=call?.function?.name;let args={};try{args=JSON.parse(call?.function?.arguments||'{}')}catch{args={}};
-      const fn=toolFns[name];const result=fn?await fn(args):{ok:false,error:`Unknown tool: ${name}`};
+      const fn=toolFns[name];
+      trace.push({type:'tool_start',tool:name,args:{url:args.url||'',clickText:args.clickText||''},at:Date.now()});
+      const result=fn?await fn(args):{ok:false,error:`Unknown tool: ${name}`};
+      trace.push({type:'tool_result',tool:name,ok:!!result?.ok,status:result?.status||null,url:result?.url||args.url||'',title:result?.title||'',error:result?.error||'',at:Date.now()});
       messages.push({role:'tool',tool_call_id:call.id,name,content:JSON.stringify(result).slice(0,12000)});
     }
   }
-  return{text:'KAI reached the execution step limit before producing a final report.',steps:8};
+  return{text:'KAI reached the execution step limit before producing a final report.',steps:8,trace};
 }
 
 export default async function(req,res){
   if(!(await verifyAdmin(req)))return res.status(401).json({ok:false,error:'Admin Ultimax authentication required.'});
   const objective=clean(req.body?.objective,12000).trim();if(!objective)return res.status(400).json({ok:false,error:'objective required'});
   const attempts=[];
-  for(const envName of KEYS){const key=String(process.env[envName]||'');if(!key){attempts.push({provider:envName,status:'missing'});continue}const t=Date.now();try{const result=await runWithKey(key,objective);attempts.push({provider:envName,status:'success',elapsedMs:Date.now()-t});return res.json({ok:true,agent:'KAI',mode:'ADMIN ULTIMAX',text:result.text,tooling:Object.keys(toolFns),steps:result.steps,provider:envName,model:MODEL,attempts})}catch(e){attempts.push({provider:envName,status:'failed',elapsedMs:Date.now()-t,error:clean(e?.message||e,900)})}}
+  for(const envName of KEYS){const key=String(process.env[envName]||'');if(!key){attempts.push({provider:envName,status:'missing'});continue}const t=Date.now();try{const result=await runWithKey(key,objective);attempts.push({provider:envName,status:'success',elapsedMs:Date.now()-t});return res.json({ok:true,agent:'KAI',mode:'ADMIN ULTIMAX',text:result.text,tooling:Object.keys(toolFns),steps:result.steps,provider:envName,model:MODEL,attempts,trace:result.trace||[]})}catch(e){attempts.push({provider:envName,status:'failed',elapsedMs:Date.now()-t,error:clean(e?.message||e,900)})}}
   return res.status(502).json({ok:false,agent:'KAI',error:`All OpenRouter KAI keys failed. ${attempts.map(a=>`${a.provider}: ${a.error||a.status}`).join(' | ')}`,tooling:Object.keys(toolFns),attempts});
 }
