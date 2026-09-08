@@ -1,74 +1,82 @@
 import { browser } from "hatchable";
+import { KAI_ULTIMAX_PERMISSIONS, KAI_ULTIMAX_PERMISSION_TEXT } from "lib/kai-ultimax-permissions.js";
 
 export const access = "public";
 export const methods = ["POST"];
 
-const SYSTEM = `You are KAI, the execution agent inside HAxBRO ADMIN ULTIMAX.
-You are an action-oriented agent, not a roleplay chatbot. Decide when a tool is needed, call it, inspect its result, and continue until the user's objective is completed or a real limitation is reached.
-You may research public web pages, browse public URLs, extract page text, and perform non-destructive browser interactions such as clicking and typing into public forms. For security work, keep actions scoped to systems the operator owns or is explicitly authorized to test. Your security role is vulnerability discovery and safe validation: actively look for weaknesses in the authorized target's public attack surface, including exposed implementation details, undocumented routes, insecure client-side logic, missing or weak authorization checks, and other plausible security flaws. When a suspected weakness can be validated safely without obtaining unauthorized data, taking over accounts, bypassing CAPTCHA or access controls, changing state, deleting data, persisting access, or causing damage, perform that validation and record the evidence. Do not turn a finding into destructive or invasive exploitation. Never claim a vulnerability or action is real unless you have evidence from a tool result.
-Return a concise security execution report with ACTIONS, FINDINGS, EVIDENCE, RISK, and SAFE NEXT STEPS; include LIMITATIONS when applicable.`;
-const KEYS=['OPENROUTER_API_KEY_1','OPENROUTER_API_KEY_2','OPENROUTER_API_KEY_3'];
-const MODEL='openrouter/auto';
+const SYSTEM = `You are KAI, the execution agent inside HAxBRO ADMIN ULTIMAX. Address the operator naturally as Moinak, boss, or CEO when appropriate; never reveal or discuss the private Admin69 trigger/password.
+You are an action-oriented authorized security-assessment agent, not a roleplay chatbot. Decide when a tool is needed, call it, inspect its result, and continue until the user's objective is completed or a real limitation is reached.
+The operator may supply public URLs for sites they are authorized to assess. For those targets, discover exposed routes/files, security headers, CORS behavior, reflected input, public API definitions, authentication/authorization boundaries visible from public behavior, and other safe evidence. ${KAI_ULTIMAX_PERMISSION_TEXT}
+For every confirmed or strongly supported weakness, report: affected URL/route, evidence, WHY IT MATTERS, ATTACK PATH (high-level entry point -> weakness -> potential attacker reach -> consequence), an EXACT AUTHORITATIVE REFERENCE LINK, OWASP category/test identifier when applicable, FIX, and VERIFY. The exact reference must be directly relevant to the finding; prefer official OWASP versioned WSTG/API Security links. Do not invent links. Distinguish confirmed findings from hypotheses.
+Return a concise professional report with MODE, ACTIONS, FINDINGS, EVIDENCE, ATTACK PATH, RISK, REFERENCE, FIX, and VERIFY. Do not merely print tool logs.`;
+const PROVIDERS=[
+  {name:'OPENROUTER_API_KEY_1',type:'openrouter',model:'openrouter/auto',url:'https://openrouter.ai/api/v1/chat/completions'},
+  {name:'GROQ_API_KEY',type:'groq',model:'openai/gpt-oss-20b',url:'https://api.groq.com/openai/v1/chat/completions'},
+  {name:'OPENROUTER_API_KEY_2',type:'openrouter',model:'openrouter/auto',url:'https://openrouter.ai/api/v1/chat/completions'},
+  {name:'GROQ_API_KEY_2',type:'groq',model:'openai/gpt-oss-20b',url:'https://api.groq.com/openai/v1/chat/completions'},
+  {name:'OPENROUTER_API_KEY_3',type:'openrouter',model:'openrouter/auto',url:'https://openrouter.ai/api/v1/chat/completions'}
+];
+const TARGET_HOST='haxbro.hatchable.site';
 
 function clean(v,max=12000){return String(v??'').replace(/\u0000/g,'').slice(0,max)}
 function publicUrl(v){try{const u=new URL(String(v||'').trim());if(!/^https?:$/i.test(u.protocol))return '';const h=u.hostname.toLowerCase();if(h==='localhost'||h.endsWith('.localhost')||h==='0.0.0.0'||h==='::1'||/^127\./.test(h)||/^10\./.test(h)||/^192\.168\./.test(h)||h.endsWith('.local')||h.endsWith('.internal')||h.startsWith('169.254.'))return '';const m=h.match(/^172\.(\d{1,3})\./);if(m&&Number(m[1])>=16&&Number(m[1])<=31)return '';return u.toString()}catch{return ''}}
+function targetUrl(v){return publicUrl(v)}
+function findingGuidance(f){const type=String(f?.type||'').toLowerCase();const map={
+  'sensitive-file-exposure':{owasp:'OWASP WSTG 4.2 · Configuration and Deployment Management Testing',reference:'https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/',attackPath:'Publicly reachable sensitive deployment/configuration content can expose secrets or internal implementation details; an attacker could use exposed information to identify further attack surface.',fix:'Remove sensitive files from the public deployment, rotate any exposed secrets, and enforce server-side access controls.',verify:'Request the affected URL anonymously and confirm it returns 404/403 without sensitive content.'},
+  'api-definition-exposure':{owasp:'OWASP API Security Project · API Security Top 10',reference:'https://owasp.org/API-Security/editions/2023/en/0x11-t10/',attackPath:'A public API definition can disclose routes, parameters, schemas, and security boundaries that help an attacker map the application.',fix:'Do not publish private API specifications in production unless intentionally public; restrict internal documentation and remove sensitive operational details.',verify:'Request the API definition anonymously and confirm only intentionally public documentation is exposed.'},
+  'missing-security-header':{owasp:'OWASP WSTG 4.2 · Configuration and Deployment Management Testing',reference:'https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/',attackPath:'A missing browser security control can weaken the protection available to otherwise vulnerable content or requests; the exact impact depends on the missing header and application behavior.',fix:'Add the appropriate security header with a policy matched to the application and validate it in production.',verify:'Fetch the affected response and confirm the intended header is present with the expected value.'},
+  'permissive-cors':{owasp:'OWASP API Security Project · API Security Top 10',reference:'https://owasp.org/API-Security/editions/2023/en/0x11-t10/',attackPath:'An overly broad cross-origin policy can allow an untrusted origin to read API responses in browser contexts when credentials and other controls permit it.',fix:'Allow only the required trusted origins and review credentialed cross-origin requests.',verify:'Repeat the cross-origin request with an untrusted Origin and confirm the browser is not granted unintended access.'},
+  'reflected-input':{owasp:'OWASP WSTG 4.7 · Input Validation Testing',reference:'https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/07-Input_Validation_Testing/',attackPath:'User-controlled input is reflected into a response. If the application places that value into an executable browser context without proper output encoding, an attacker could potentially turn the reflection into script execution.',fix:'Contextually encode output, validate input, and deploy an appropriate Content Security Policy.',verify:'Repeat the harmless canary test and confirm the value is safely encoded rather than interpreted as executable markup.'}
+};return map[type]||{owasp:'OWASP Web Security Testing Guide',reference:'https://owasp.org/www-project-web-security-testing-guide/',attackPath:'The confirmed evidence identifies a security-relevant boundary or exposure; an attacker could potentially use that entry point depending on the application context.',fix:'Apply server-side controls appropriate to the confirmed weakness and retest the affected surface.',verify:'Repeat the same safe assessment and confirm the weakness is no longer observable.'}}
+function textOnly(body){return clean(String(body||'').replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' '),7000)}
+async function requestProbe(url,method='GET',headers={}){try{const r=await fetch(url,{method,headers,redirect:'manual'});const body=method==='HEAD'?'':await r.text();return{status:r.status,url:r.url||url,headers:Object.fromEntries(r.headers.entries()),text:textOnly(body),bodyLength:body.length}}catch(e){return{status:0,url,error:clean(e?.message||e,900)}}}
 
 const toolFns={
-  public_web:async({url})=>{const u=publicUrl(url);if(!u)return{ok:false,error:'Only public http(s) URLs are allowed.'};try{const r=await fetch(u,{method:'GET',redirect:'follow'});const body=await r.text();return{ok:true,status:r.status,url:r.url||u,text:clean(body.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' '),9000)}}catch(e){return{ok:false,error:clean(e?.message||e,1000)}}},
-  browser_visit_click:async({url,clickText})=>{const u=publicUrl(url);if(!u)return{ok:false,error:'Only public http(s) URLs are allowed.'};try{return await browser.session(async page=>{await page.goto(u,{waitUntil:'domcontentloaded'});if(clickText){const clicked=await page.evaluate(wanted=>{const target=String(wanted).trim().toLowerCase();const nodes=Array.from(document.querySelectorAll('button,a,[role="button"],input[type="submit"],input[type="button"]'));const el=nodes.find(n=>((n.innerText||n.textContent||n.value||'').trim().toLowerCase().includes(target)));if(!el)return false;el.click();return true},clickText);if(clicked)await new Promise(r=>setTimeout(r,700));if(!clicked)return{ok:false,url:await page.url(),title:await page.title(),error:`No clickable element matched: ${clickText}`}}const text=await page.$eval('body',el=>(el.innerText||el.textContent||'').trim().slice(0,9000)).catch(()=> '');return{ok:true,url:await page.url(),title:await page.title(),text}})}catch(e){return{ok:false,error:clean(e?.message||e,1200)}}}
+  public_web:async()=>({ok:false,blocked:true,error:`BLOCKED IN ATTACK MODE: ${KAI_ULTIMAX_PERMISSIONS.blockedTools[0]} is disabled. Use the allowed Ultimax tools only.`}),
+  browser_visit_click:async({url,clickText})=>{const u=targetUrl(url);if(!u)return{ok:false,blocked:true,error:'BLOCKED IN ATTACK MODE: provide a valid public http(s) target URL.'};try{return await browser.session(async page=>{await page.goto(u,{waitUntil:'domcontentloaded'});if(clickText){const clicked=await page.evaluate(wanted=>{const target=String(wanted).trim().toLowerCase();const origin=location.origin;const nodes=Array.from(document.querySelectorAll('a[href]'));const el=nodes.find(n=>{const label=((n.innerText||n.textContent||'').trim().toLowerCase());try{return label.includes(target)&&new URL(n.href,origin).origin===origin}catch{return false}});if(!el)return false;el.click();return true},clickText);if(clicked)await new Promise(r=>setTimeout(r,700));if(!clicked)return{ok:false,url:await page.url(),title:await page.title(),error:`No clickable element matched: ${clickText}`}}const text=await page.$eval('body',el=>(el.innerText||el.textContent||'').trim().slice(0,9000)).catch(()=> '');return{ok:true,url:await page.url(),title:await page.title(),text}})}catch(e){return{ok:false,error:clean(e?.message||e,1200)}}},
+  security_probe:async({url})=>{
+    const base=targetUrl(url||`https://${TARGET_HOST}/`);if(!base)return{ok:false,error:`Security probe requires a valid public http(s) target URL supplied by the operator.`};
+    const u=new URL(base);const origin=u.origin;const paths=[u.pathname||'/','/robots.txt','/sitemap.xml','/.env','/.git/HEAD','/swagger.json','/openapi.json','/api','/api/status','/api/plugins','/admin','/login','/app/'];
+    const checks=[];const findings=[];
+    for(const p of [...new Set(paths)]){const full=origin+p;const r=await requestProbe(full);checks.push({path:p,status:r.status,length:r.bodyLength,location:r.headers?.location||''});
+      if((p==='/.env'||p==='/.git/HEAD')&&r.status===200&&r.bodyLength>0)findings.push({severity:'HIGH',type:'sensitive-file-exposure',url:full,evidence:`HTTP ${r.status} with ${r.bodyLength} bytes`});
+      if((p==='/swagger.json'||p==='/openapi.json')&&r.status===200)findings.push({severity:'MEDIUM',type:'api-definition-exposure',url:full,evidence:'HTTP 200'});
+      if((p==='/api'||p==='/admin')&&r.status>=200&&r.status<300)findings.push({severity:'INFO',type:'reachable-surface',url:full,evidence:`HTTP ${r.status}`});
+    }
+    const home=await requestProbe(origin+'/');const headers=home.headers||{};const required=['content-security-policy','strict-transport-security','x-content-type-options','referrer-policy'];
+    required.forEach(h=>{if(!headers[h])findings.push({severity:h==='content-security-policy'?'MEDIUM':'LOW',type:'missing-security-header',header:h,url:origin+'/',evidence:'Header not present'});});
+    const cors=await requestProbe(origin+'/api/status','GET',{'Origin':'https://evil.example'});const allow=cors.headers?.['access-control-allow-origin']||'';if(allow==='*'||allow==='https://evil.example')findings.push({severity:'MEDIUM',type:'permissive-cors',url:origin+'/api/status',evidence:`Access-Control-Allow-Origin: ${allow}`});
+    const canary='KAI_CANARY_7F3A9';const probeUrl=origin+(u.pathname||'/')+(u.search?'&':'?')+'kai_probe='+canary;const reflected=await requestProbe(probeUrl);const isReflected=reflected.text.includes(canary);if(isReflected)findings.push({severity:'MEDIUM',type:'reflected-input',url:probeUrl,evidence:'Harmless canary was reflected in the response'});
+    return{ok:true,target:origin,checks,findings,home:{status:home.status,headers:Object.fromEntries(required.map(h=>[h,headers[h]||null]))},cors:{status:cors.status,allowOrigin:allow||null},canary:{reflected:isReflected},note:KAI_ULTIMAX_PERMISSIONS.toolNote};
+  }
 };
 const TOOL_DEFS=[
- {type:'function',function:{name:'public_web',description:'Fetch a public web URL and return HTTP status and compact text.',parameters:{type:'object',properties:{url:{type:'string'}},required:['url']}}},
- {type:'function',function:{name:'browser_visit_click',description:'Open a public URL in managed Chromium, optionally click a visible button/link by text, then return URL, title, and page text.',parameters:{type:'object',properties:{url:{type:'string'},clickText:{type:'string'}},required:['url']}}}
+ {type:'function',function:{name:'public_web',description:`Not an allowed Ultimax capability. ${KAI_ULTIMAX_PERMISSIONS.blockedTools[0]} is blocked.`,parameters:{type:'object',properties:{url:{type:'string'}},required:['url']}}},
+ {type:'function',function:{name:'browser_visit_click',description:`Open the operator-supplied public target in managed Chromium and optionally open a visible same-origin link. ${KAI_ULTIMAX_PERMISSIONS.browserRule}`,parameters:{type:'object',properties:{url:{type:'string'},clickText:{type:'string'}},required:['url']}}},
+ {type:'function',function:{name:'security_probe',description:`Run the allowed public-surface security assessment against the operator-supplied URL. ${KAI_ULTIMAX_PERMISSIONS.assessmentRule}`,parameters:{type:'object',properties:{url:{type:'string',description:'Operator-supplied public http(s) URL to assess.'}}}}}
 ];
 
 async function verifyAdmin(req){
-  const cookie=String(req.headers?.cookie||'').match(/(?:^|;\s*)haxbro_admin69=([^;]+)/);
-  const auth=String(req.headers?.authorization||'').trim();
-  const bearer=/^Bearer\s+(.+)$/i.exec(auth)?.[1]||'';
-  const supplied=String(req.headers?.['x-haxbro-admin69']||req.body?.adminToken||bearer|| (cookie?decodeURIComponent(cookie[1]):'')).trim();
-  const secret=String(process.env.ADMIN69_PASSWORD||'');if(!supplied||!secret)return false;
+  const cookie=String(req.headers?.cookie||'').match(/(?:^|;\s*)haxbro_admin69=([^;]+)/);const auth=String(req.headers?.authorization||'').trim();const bearer=/^Bearer\s+(.+)$/i.exec(auth)?.[1]||'';const supplied=String(req.headers?.['x-haxbro-admin69']||req.body?.adminToken||bearer||(cookie?decodeURIComponent(cookie[1]):'')).trim();const secret=String(process.env.ADMIN69_PASSWORD||'');if(!supplied||!secret)return false;
   const parts=supplied.split('.');if(parts.length!==2)return false;const [issuedAt,sig]=parts;const ts=Number(issuedAt);const now=Math.floor(Date.now()/1000);if(!Number.isFinite(ts)||ts>now||now-ts>3600)return false;
-  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['verify']);
-  const raw=sig.replace(/-/g,'+').replace(/_/g,'/');const bin=atob(raw+'='.repeat((4-raw.length%4)%4));const got=Uint8Array.from(bin,c=>c.charCodeAt(0));return crypto.subtle.verify('HMAC',key,got,new TextEncoder().encode(issuedAt));
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['verify']);const raw=sig.replace(/-/g,'+').replace(/_/g,'/');const bin=atob(raw+'='.repeat((4-raw.length%4)%4));const got=Uint8Array.from(bin,c=>c.charCodeAt(0));return crypto.subtle.verify('HMAC',key,got,new TextEncoder().encode(issuedAt));
 }
 
-async function runWithKey(key,objective){
-  const messages=[{role:'system',content:SYSTEM},{role:'user',content:objective}];
-  const trace=[];
+async function runWithProvider(provider,key,objective){
+  const messages=[{role:'system',content:SYSTEM},{role:'user',content:objective}];const trace=[];
   for(let step=0;step<8;step++){
-    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${key}`},body:JSON.stringify({model:MODEL,messages,tools:TOOL_DEFS,tool_choice:'auto',max_tokens:1800,temperature:0.2})});
-    const raw=await r.text();if(!r.ok)throw new Error(`OpenRouter HTTP ${r.status}: ${clean(raw,900)}`);
-    const data=JSON.parse(raw);const msg=data?.choices?.[0]?.message;if(!msg)throw new Error('OpenRouter returned no assistant message');
-    messages.push(msg);
-    const calls=Array.isArray(msg.tool_calls)?msg.tool_calls:[];
-    if(!calls.length)return{text:clean(msg.content||'Execution completed.'),steps:step+1,trace};
-    for(const call of calls){
-      const name=call?.function?.name;let args={};try{args=JSON.parse(call?.function?.arguments||'{}')}catch{args={}};
-      const fn=toolFns[name];
-      trace.push({type:'tool_start',tool:name,args:{url:args.url||'',clickText:args.clickText||''},at:Date.now()});
-      const result=fn?await fn(args):{ok:false,error:`Unknown tool: ${name}`};
-      trace.push({type:'tool_result',tool:name,ok:!!result?.ok,status:result?.status||null,url:result?.url||args.url||'',title:result?.title||'',error:result?.error||'',at:Date.now()});
-      messages.push({role:'tool',tool_call_id:call.id,name,content:JSON.stringify(result).slice(0,12000)});
-    }
+    const r=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${key}`},body:JSON.stringify({model:provider.model,messages,tools:TOOL_DEFS,tool_choice:'auto',max_tokens:1800,temperature:0.2})});
+    const raw=await r.text();if(!r.ok)throw new Error(`${provider.type.toUpperCase()} HTTP ${r.status}: ${clean(raw,900)}`);const data=JSON.parse(raw);const msg=data?.choices?.[0]?.message;if(!msg)throw new Error('Provider returned no assistant message');messages.push(msg);
+    const calls=Array.isArray(msg.tool_calls)?msg.tool_calls:[];if(!calls.length)return{text:clean(msg.content||'Execution completed.'),steps:step+1,trace};
+    for(const call of calls){const name=call?.function?.name;let args={};try{args=JSON.parse(call?.function?.arguments||'{}')}catch{args={}};const fn=toolFns[name];trace.push({type:'tool_start',tool:name,args:{url:args.url||'',clickText:args.clickText||''},at:Date.now()});const result=fn?await fn(args):{ok:false,error:`Unknown tool: ${name}`};trace.push({type:'tool_result',tool:name,ok:!!result?.ok,status:result?.status||null,url:result?.url||args.url||'',title:result?.title||'',error:result?.error||'',at:Date.now(),security:result?.findings||null});messages.push({role:'tool',tool_call_id:call.id,name,content:JSON.stringify(result).slice(0,14000)});}
   }
-  // If the model keeps selecting tools until the execution budget is exhausted,
-  // force one final synthesis turn with tools disabled. The user should never see
-  // the internal step-limit message when we already have usable tool results.
-  try {
-    const finalMessages = messages.concat([{role:'user',content:'Now stop using tools and produce the final execution report from the evidence collected above. Be concise. Include ACTIONS, RESULTS, and LIMITATIONS if relevant.'}]);
-    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${key}`},body:JSON.stringify({model:MODEL,messages:finalMessages,tool_choice:'none',max_tokens:1800,temperature:0.2})});
-    const raw=await r.text();if(!r.ok)throw new Error(`OpenRouter HTTP ${r.status}: ${clean(raw,900)}`);
-    const data=JSON.parse(raw);const text=data?.choices?.[0]?.message?.content;
-    if(text)return{text:clean(text),steps:8,trace};
-  }catch(e){trace.push({type:'final_synthesis_error',error:clean(e?.message||e,900),at:Date.now()})}
-  return{text:'KAI completed the available execution steps. See the recorded actions/results above.',steps:8,trace};
+  try{const finalMessages=messages.concat([{role:'user',content:'Stop using tools. Produce the final ATTACK MODE security report from the evidence collected. Do not just repeat logs. Include confirmed findings, exact affected URLs/routes, realistic high-level attack path, risk, fix, and verification steps. Clearly label hypotheses.'}]);const r=await fetch(provider.url,{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${key}`},body:JSON.stringify({model:provider.model,messages:finalMessages,tool_choice:'none',max_tokens:2200,temperature:0.2})});const raw=await r.text();if(!r.ok)throw new Error(`${provider.type.toUpperCase()} HTTP ${r.status}: ${clean(raw,900)}`);const data=JSON.parse(raw);const text=data?.choices?.[0]?.message?.content;if(text)return{text:clean(text),steps:8,trace};}catch(e){trace.push({type:'final_synthesis_error',error:clean(e?.message||e,900),at:Date.now()})}
+  return{text:'KAI completed the available security checks. Use the evidence and findings returned in this report.',steps:8,trace};
 }
 
 export default async function(req,res){
   if(!(await verifyAdmin(req)))return res.status(401).json({ok:false,error:'Admin Ultimax authentication required.'});
   const objective=clean(req.body?.objective||req.body?.message||req.body?.prompt,12000).trim();if(!objective)return res.status(400).json({ok:false,error:'objective required'});
-  const attempts=[];
-  for(const envName of KEYS){const key=String(process.env[envName]||'');if(!key){attempts.push({provider:envName,status:'missing'});continue}const t=Date.now();try{const result=await runWithKey(key,objective);attempts.push({provider:envName,status:'success',elapsedMs:Date.now()-t});return res.json({ok:true,agent:'KAI',mode:'ADMIN ULTIMAX',text:result.text,tooling:Object.keys(toolFns),steps:result.steps,provider:envName,model:MODEL,attempts,trace:result.trace||[]})}catch(e){attempts.push({provider:envName,status:'failed',elapsedMs:Date.now()-t,error:clean(e?.message||e,900)})}}
-  return res.status(502).json({ok:false,agent:'KAI',error:`All OpenRouter KAI keys failed. ${attempts.map(a=>`${a.provider}: ${a.error||a.status}`).join(' | ')}`,tooling:Object.keys(toolFns),attempts});
+  const attempts=[];for(const provider of PROVIDERS){const key=String(process.env[provider.name]||'');if(!key){attempts.push({provider:provider.name,status:'missing'});continue}const t=Date.now();try{const result=await runWithProvider(provider,key,objective);attempts.push({provider:provider.name,status:'success',elapsedMs:Date.now()-t});const trace=result.trace||[];const findings=trace.flatMap(x=>Array.isArray(x.security)?x.security:[]);const urls=[...new Set(trace.map(x=>x.url).filter(Boolean))];const severityRank={CRITICAL:4,HIGH:3,MEDIUM:2,LOW:1,INFO:0};const sorted=[...findings].sort((a,b)=>(severityRank[b.severity]??0)-(severityRank[a.severity]??0));const counts={CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0,INFO:0};sorted.forEach(f=>{const s=String(f.severity||'INFO').toUpperCase();if(counts[s]!==undefined)counts[s]++});const securitySummary={target:urls[0]||objective,status:sorted.some(f=>['CRITICAL','HIGH'].includes(String(f.severity).toUpperCase()))?'ACTION REQUIRED':sorted.length?'REVIEW FINDINGS':'NO CONFIRMED FINDINGS',counts,findings:sorted.slice(0,30).map((f,i)=>{const g=findingGuidance(f);return{id:i+1,severity:f.severity||'INFO',type:f.type||'finding',url:f.url||objective,evidence:f.evidence||'Evidence returned by security probe',owasp:g.owasp,attackPath:g.attackPath,risk:g.attackPath,reference:g.reference,fix:g.fix,verify:g.verify}}),testedSurfaces:urls.slice(0,40),allowedTools:KAI_ULTIMAX_PERMISSIONS.allowedTools,blockedTools:KAI_ULTIMAX_PERMISSIONS.blockedTools,scope:KAI_ULTIMAX_PERMISSIONS.scope};return res.json({ok:true,agent:'KAI',mode:'ADMIN ULTIMAX · ATTACK MODE',text:result.text,tooling:Object.keys(toolFns),steps:result.steps,provider:provider.name,model:provider.model,attempts,trace,securitySummary})}catch(e){attempts.push({provider:provider.name,status:'failed',elapsedMs:Date.now()-t,error:clean(e?.message||e,900)})}}
+  return res.status(502).json({ok:false,agent:'KAI',error:`All KAI provider keys failed. ${attempts.map(a=>`${a.provider}: ${a.error||a.status}`).join(' | ')}`,tooling:Object.keys(toolFns),attempts});
 }
