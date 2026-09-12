@@ -27,23 +27,23 @@ jobs:
           rm -rf _site
           mkdir -p _site
           cp -R public/. _site/
-          if [ -f public/app/index.html ]; then
-            cp public/app/index.html _site/index.html
-          fi
+          if [ -f public/app/index.html ]; then cp public/app/index.html _site/index.html; fi
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('_site/index.html')
           s=p.read_text(encoding='utf-8')
-          # GitHub Pages has no Hatchable runtime. Remove platform bootstrap/badge code.
-          import re
+          # Remove Hatchable-only bootstrap and badge from the independent Pages build.
           s=re.sub(r'<script>window\\.__HATCHABLE__.*?</script>','',s,flags=re.S)
           s=re.sub(r'<script src="/__hatchable/[^\"]+"[^>]*></script>','',s)
           s=re.sub(r'<a id="hb-badge".*?</a>','',s,flags=re.S)
           s=re.sub(r'<script>\(async\(\)=>\{try\{const r=await fetch\(\'/api/session\'.*?</script>','',s,flags=re.S)
-          # Inject the independent GitHub workspace layer without changing the source app.
-          marker='</head>'
-          inject='<link rel="stylesheet" href="/haxbro-ai/workspace-overhaul.css?v=1"><script src="/haxbro-ai/workspace-overhaul.js?v=1" defer></script>'
-          s=s.replace(marker,inject+marker,1)
+          # Source app uses root-absolute static assets. Prefix them for project Pages.
+          s=s.replace('src="/','src="/haxbro-ai/')
+          s=s.replace('href="/','href="/haxbro-ai/')
+          s=s.replace('src="/haxbro-ai/__hatchable/','src="/__hatchable/')
+          # Independent workspace layer.
+          s=s.replace('</head>','<link rel="stylesheet" href="/haxbro-ai/workspace-overhaul.css?v=1"><script src="/haxbro-ai/workspace-overhaul.js?v=1" defer></script></head>',1)
           p.write_text(s,encoding='utf-8')
           PY
           touch _site/.nojekyll
