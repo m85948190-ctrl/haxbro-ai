@@ -18,6 +18,6 @@ export default async function(req,res){
     [name,JSON.stringify(safeFiles)]
   );
   const id=rows[0].id;
-  const origin=new URL(req.url,'https://haxbro.hatchable.site').origin;
+  const origin=new URL(req.url,'').origin;
   return res.json({ok:true,id,url:`${origin}/apps/${id}`,hosting:'HAxBRO App Engine',provider:'HAxBRO',free:true});
 }

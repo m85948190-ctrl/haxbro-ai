@@ -14,7 +14,7 @@ export default async function(req,res){
 
   // Do not store customer apps in HAxBRO and do not create a HAxBRO-hosted URL.
   // KAI 6-9-9 owns the external free/no-login deployment decision.
-  const origin = new URL(req.url,'https://haxbro.hatchable.site').origin;
+  const origin = new URL(req.url,'').origin;
   const r = await fetch(`${origin}/api/kai-699`, {
     method:'POST',
     headers:{'content-type':'application/json'},

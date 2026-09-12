@@ -17,7 +17,7 @@ export default async function(req,res){
   if(!q.rows.length) return res.redirect('/?netlify=error');
   const sessionId=q.rows[0].session_id;
   try{
-    const origin=new URL(req.url,'https://haxbro.hatchable.site').origin;
+    const origin=new URL(req.url,'').origin;
     const redirectUri=origin+'/api/netlify/callback';
     const body=new URLSearchParams({grant_type:'authorization_code',code,client_id:clientId,client_secret:clientSecret,redirect_uri:redirectUri});
     const r=await fetch('https://api.netlify.com/oauth/tokens',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
