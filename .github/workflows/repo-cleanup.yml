@@ -30,7 +30,9 @@ jobs:
               re.compile(r'<a[^>]+id=["\']hb-badge["\'][\s\S]*?</a>', re.I),
           ]
           for path in root.rglob('*'):
-              if not path.is_file() or path.suffix.lower() not in text_ext or '.git' in path.parts:
+              if '.git' in path.parts or '.github' in path.parts:
+                  continue
+              if not path.is_file() or path.suffix.lower() not in text_ext:
                   continue
               try:
                   s = path.read_text(encoding='utf-8')
@@ -50,17 +52,4 @@ jobs:
             exit 0
           fi
           git commit -m 'Remove legacy platform bindings'
-          git push
-      - name: Remove cleanup workflow
-        if: always()
-        shell: bash
-        run: |
-          rm -f .github/workflows/repo-cleanup.yml
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m 'Remove temporary cleanup workflow'
           git push
